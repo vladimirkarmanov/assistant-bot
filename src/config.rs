@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct DatabaseConfig {
+    pub path: String,
     pub url: String,
 }
 

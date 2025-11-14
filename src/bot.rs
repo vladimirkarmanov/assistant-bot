@@ -1,5 +1,5 @@
 use dptree::case;
-use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
 use teloxide::{
     dispatching::{HandlerExt, dialogue::InMemStorage},
     prelude::*,
@@ -14,10 +14,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     log::info!("Starting bot...");
 
     let config = Config::from_env();
-    let db = SqlitePoolOptions::new()
-        .max_connections(5)
-        .connect(&config.database.url)
-        .await?;
+
+    let mut sqlite_opts = sqlx::sqlite::SqliteConnectOptions::new();
+    sqlite_opts = sqlite_opts.filename(&config.database.path);
+
+    let db = SqlitePool::connect_with(sqlite_opts).await?;
 
     let bot = Bot::new(&config.bot_token);
     bot.set_my_commands(Command::bot_commands())
