@@ -1,0 +1,14 @@
+[package]
+name = "assistant-bot"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+teloxide = { version = "0.17.0", features = ["macros"] }
+log = "0.4"
+pretty_env_logger = "0.5"
+tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
+thiserror = "2.0.17"
+sqlx = { version = "0.8", features = [ "runtime-tokio", "sqlite", "migrate" ] }
+config = "0.15.18"
+serde = { version = "1", features = ["derive"] }

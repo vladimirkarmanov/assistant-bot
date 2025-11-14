@@ -1,0 +1,27 @@
+services:
+  # bot:
+  #   container_name: bot
+  #   restart: always
+  #   build: ./
+  #   command: bash -c "while !</dev/tcp/db/5432; do sleep 1; done; uv run ./bot/infra/db/migrate.py && uv run ./bot/telegram/polling.py"
+  #   depends_on:
+  #     - redis
+  #     - postgres
+  #   env_file:
+  #     - ./.env
+
+  # redis:
+  #   image: redis:alpine
+  #   restart: always
+  #   ports:
+  #     - "6379:6379"
+  #   command: redis-server --save 20 1 --loglevel debug --requirepass ${REDIS_PASSWORD}
+  #   env_file:
+  #     - ./.env
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #   volumes:
+  #     - assistant-bot-redis-data:/data
+
+volumes:
+  assistant-bot-redis-data:
