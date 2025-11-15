@@ -1,5 +1,5 @@
 use dptree::case;
-use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
+use sqlx::SqlitePool;
 use teloxide::{
     dispatching::{HandlerExt, dialogue::InMemStorage},
     prelude::*,
@@ -47,8 +47,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .enter_dialogue::<Message, InMemStorage<AddClassState>, AddClassState>()
                 .branch(dptree::case![AddClassState::ReceiveName].endpoint(receive_name))
                 .branch(
-                    dptree::case![AddClassState::ReceiveLimitCount { name }]
-                        .endpoint(receive_limit_count),
+                    dptree::case![AddClassState::ReceiveQuantity { name }]
+                        .endpoint(receive_quantity),
                 ),
         )
         .branch(Update::filter_message().endpoint(message_handler))

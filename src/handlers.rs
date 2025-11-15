@@ -5,9 +5,11 @@ use teloxide::{
     utils::command::BotCommands,
 };
 
-use crate::keyboards;
+use crate::{
+    keyboards,
+    services::{class::add_class, user::add_user},
+};
 use teloxide::{Bot, types::Message, types::ParseMode};
-
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "snake_case", description = "Доступные команды:")]
@@ -20,12 +22,17 @@ pub enum Command {
     MainMenu,
 }
 
-pub async fn start_handler(bot: Bot, msg: Message) -> Result<(), Box<dyn Error + Send + Sync>> {
+pub async fn start_handler(
+    bot: Bot,
+    msg: Message,
+    db: Pool<Sqlite>,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
     bot.send_message(
         msg.chat.id,
         format!("Я семейный бот. Посмотри что я умею: /help"),
     )
     .await?;
+    add_user(db, msg.chat.id.0, msg.chat.username().unwrap_or("")).await?;
     Ok(())
 }
 
@@ -103,36 +110,37 @@ async fn class_settings_handler(
     Ok(())
 }
 
-type MyDialogue = Dialogue<AddClassState, InMemStorage<AddClassState>>;
-type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
-
 #[derive(Clone, Default)]
 pub enum AddClassState {
     #[default]
     Idle,
     ReceiveName,
-    ReceiveLimitCount {
+    ReceiveQuantity {
         name: String,
     },
 }
 
 pub async fn add_class_start_handler(
     bot: Bot,
-    dialogue: MyDialogue,
+    dialogue: Dialogue<AddClassState, InMemStorage<AddClassState>>,
     msg: Message,
-) -> HandlerResult {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     bot.send_message(msg.chat.id, "Введите назввание:").await?;
     dialogue.update(AddClassState::ReceiveName).await?;
     Ok(())
 }
 
-pub async fn receive_name(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
+pub async fn receive_name(
+    bot: Bot,
+    dialogue: Dialogue<AddClassState, InMemStorage<AddClassState>>,
+    msg: Message,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match msg.text() {
         Some(text) => {
             bot.send_message(msg.chat.id, "Введите количество занятий")
                 .await?;
             dialogue
-                .update(AddClassState::ReceiveLimitCount { name: text.into() })
+                .update(AddClassState::ReceiveQuantity { name: text.into() })
                 .await?;
         }
         None => {
@@ -143,16 +151,20 @@ pub async fn receive_name(bot: Bot, dialogue: MyDialogue, msg: Message) -> Handl
     Ok(())
 }
 
-pub async fn receive_limit_count(
+pub async fn receive_quantity(
     bot: Bot,
-    dialogue: MyDialogue,
+    dialogue: Dialogue<AddClassState, InMemStorage<AddClassState>>,
     name: String,
     msg: Message,
-) -> HandlerResult {
+    db: Pool<Sqlite>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match msg.text().map(|text| text.parse::<u8>()) {
-        Some(Ok(limit_count)) => {
-            let report = format!("Name: {name}\nLimit count: {limit_count}");
-            bot.send_message(msg.chat.id, report).await?;
+        Some(Ok(quantity)) => {
+            let class = match add_class(&db, name, quantity, msg.chat.id.0).await {
+                Ok(_) => "✅ Занятие успешно добавлено!".to_string(),
+                Err(err) => err.to_string(),
+            };
+            bot.send_message(msg.chat.id, class).await?;
             dialogue.exit().await?;
         }
         _ => {
