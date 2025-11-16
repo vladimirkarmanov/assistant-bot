@@ -6,8 +6,15 @@ use teloxide::{
     utils::command::BotCommands,
 };
 
-use crate::handlers::*;
-use crate::{config::Config, handlers::Command};
+use crate::{
+    config::Config,
+    handlers::{
+        class::{
+            add_class_start_handler, charge_class_callback_handler, list_classes_handler, receive_name, receive_quantity, AddClassState
+        },
+        command::{help_handler, main_menu_handler, message_handler, start_handler, Command},
+    },
+};
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     pretty_env_logger::init();
@@ -52,7 +59,13 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 ),
         )
         .branch(Update::filter_message().endpoint(message_handler))
-        .branch(Update::filter_callback_query().endpoint(callback_handler));
+        .branch(
+            Update::filter_callback_query()
+                .filter(|q: CallbackQuery| {
+                    q.data.as_deref().is_some_and(|d| d.starts_with("charge_class:"))
+                })
+                .endpoint(charge_class_callback_handler)
+        );
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![

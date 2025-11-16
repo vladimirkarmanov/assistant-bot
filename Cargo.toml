@@ -12,3 +12,4 @@ thiserror = "2.0.17"
 sqlx = { version = "0.8", features = [ "runtime-tokio", "sqlite", "migrate" ] }
 config = "0.15.18"
 serde = { version = "1", features = ["derive"] }
+anyhow = "1.0.100"

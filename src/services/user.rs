@@ -7,25 +7,32 @@ pub struct User {
     pub username: Option<String>,
 }
 
+pub async fn does_user_exist(
+    db: &Pool<Sqlite>,
+    telegram_id: i64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let user: Option<(i64,)> = sqlx::query_as("select user_id from user where telegram_id = ?")
+        .bind(telegram_id)
+        .fetch_optional(db)
+        .await?;
+
+    Ok(user.is_some())
+}
+
 pub async fn add_user(
-    db: Pool<Sqlite>,
+    db: &Pool<Sqlite>,
     telegram_id: i64,
     username: &str,
-) -> Result<User, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
+    if does_user_exist(db, telegram_id).await? {
+        return Err("User already exists".into());
+    }
     let result = sqlx::query("insert into user (telegram_id, username) values (?, ?)")
         .bind(telegram_id)
         .bind(username)
-        .execute(&db)
+        .execute(db)
         .await?;
 
     let user_id = result.last_insert_rowid();
-
-    let user = sqlx::query_as::<_, User>(
-        "select user_id, telegram_id, username from user where user_id = ?",
-    )
-    .bind(user_id)
-    .fetch_one(&db)
-    .await?;
-
-    Ok(user)
+    Ok(user_id)
 }
