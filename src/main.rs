@@ -5,6 +5,7 @@ mod keyboards;
 mod services;
 
 #[tokio::main]
-async fn main() {
-    let _ = bot::run().await;
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    bot::run().await?;
+    Ok(())
 }

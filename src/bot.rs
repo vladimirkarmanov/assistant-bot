@@ -1,7 +1,7 @@
 use dptree::case;
 use sqlx::SqlitePool;
 use teloxide::{
-    dispatching::{HandlerExt, dialogue::InMemStorage},
+    dispatching::{dialogue::{ErasedStorage, InMemStorage}, HandlerExt},
     prelude::*,
     utils::command::BotCommands,
 };
@@ -14,7 +14,10 @@ use crate::{
             charge_class_callback_handler, receive_name, receive_quantity,
             receive_quantity_handler, update_class_quantity_start_handler,
         },
-        command::{Command, help_handler, main_menu_handler, message_handler, start_handler},
+        command::{
+            Command, cancel_handler, help_handler, main_menu_handler, message_handler,
+            start_handler,
+        },
     },
 };
 
@@ -40,7 +43,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .filter_command::<Command>()
                 .branch(case![Command::Help].endpoint(help_handler))
                 .branch(case![Command::Start].endpoint(start_handler))
-                .branch(case![Command::MainMenu].endpoint(main_menu_handler)),
+                .branch(case![Command::MainMenu].endpoint(main_menu_handler))
+                .branch(case![Command::CancelOperation].endpoint(cancel_handler))
         )
         .branch(
             Update::filter_message().branch(
