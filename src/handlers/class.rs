@@ -6,7 +6,7 @@ use teloxide::{
 
 use crate::{
     keyboards,
-    services::class::{add_class, charge_class, get_classes_by_user_id},
+    services::class::{add_class, charge_class, get_classes_by_user_id, update_class_quantity},
 };
 
 #[derive(Clone, Default)]
@@ -132,5 +132,86 @@ pub async fn charge_class_callback_handler(
         }
     }
 
+    Ok(())
+}
+
+pub async fn update_quantity_handler(
+    bot: Bot,
+    msg: Message,
+    db: Pool<Sqlite>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let classes = get_classes_by_user_id(&db, msg.chat.id.0).await?;
+    let keyboard = keyboards::make_class_list_keyboard(classes, 2, "update_quantity:");
+    let output = "Выберите занятие для обновления";
+    bot.send_message(msg.chat.id, output)
+        .reply_markup(keyboard)
+        .parse_mode(ParseMode::Html)
+        .await?;
+    Ok(())
+}
+
+#[derive(Clone, Default)]
+pub enum UpdateClassQuantityState {
+    #[default]
+    GetClassId,
+    ReceiveQuantity {
+        class_id: i64,
+    },
+}
+
+pub async fn update_class_quantity_start_handler(
+    bot: Bot,
+    q: CallbackQuery,
+    dialogue: Dialogue<UpdateClassQuantityState, InMemStorage<UpdateClassQuantityState>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    bot.answer_callback_query(q.id.clone()).await?;
+
+    if let Some(ref data) = q.data {
+        if let Some((_, id)) = data.split_once(':') {
+            let class_id: i64 = id.parse()?;
+            dialogue
+                .update(UpdateClassQuantityState::ReceiveQuantity { class_id: class_id })
+                .await?;
+
+            bot.send_message(q.from.id, "Введите количество:").await?;
+        } else {
+            bot.send_message(q.from.id, "Ошибка").await?;
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn receive_quantity_handler(
+    bot: Bot,
+    msg: Message,
+    dialogue: Dialogue<UpdateClassQuantityState, InMemStorage<UpdateClassQuantityState>>,
+    db: Pool<Sqlite>,
+    class_id: i64,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    match msg.text().map(|text| text.parse::<u8>()) {
+        Some(Ok(quantity)) => {
+            let output: String;
+            match update_class_quantity(&db, class_id, msg.chat.id.0, quantity).await {
+                Ok(class) => {
+                    output = format!(
+                        "✅ Занятие {name} успешно обновлено! Остаток: {quantity}",
+                        name = class.name,
+                        quantity = class.quantity
+                    );
+                }
+                Err(err) => {
+                    output = err.to_string();
+                }
+            };
+            dialogue.exit().await?;
+            bot.send_message(msg.chat.id, output)
+                .parse_mode(ParseMode::Html)
+                .await?;
+        }
+        _ => {
+            bot.send_message(msg.chat.id, "Отправьте число").await?;
+        }
+    }
     Ok(())
 }

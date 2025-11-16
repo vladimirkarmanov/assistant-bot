@@ -10,9 +10,11 @@ use crate::{
     config::Config,
     handlers::{
         class::{
-            add_class_start_handler, charge_class_callback_handler, list_classes_handler, receive_name, receive_quantity, AddClassState
+            AddClassState, UpdateClassQuantityState, add_class_start_handler,
+            charge_class_callback_handler, receive_name, receive_quantity,
+            receive_quantity_handler, update_class_quantity_start_handler,
         },
-        command::{help_handler, main_menu_handler, message_handler, start_handler, Command},
+        command::{Command, help_handler, main_menu_handler, message_handler, start_handler},
     },
 };
 
@@ -58,18 +60,36 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         .endpoint(receive_quantity),
                 ),
         )
-        .branch(Update::filter_message().endpoint(message_handler))
         .branch(
             Update::filter_callback_query()
                 .filter(|q: CallbackQuery| {
-                    q.data.as_deref().is_some_and(|d| d.starts_with("charge_class:"))
+                    q.data
+                        .as_deref()
+                        .is_some_and(|d| d.starts_with("charge_class:"))
                 })
-                .endpoint(charge_class_callback_handler)
-        );
+                .endpoint(charge_class_callback_handler),
+        )
+        .branch(
+            Update::filter_callback_query()
+                .filter(|q: CallbackQuery| {
+                    q.data
+                        .as_deref()
+                        .is_some_and(|d| d.starts_with("update_quantity:"))
+                })
+                .enter_dialogue::<CallbackQuery, InMemStorage<UpdateClassQuantityState>, UpdateClassQuantityState>()
+                .branch(case![UpdateClassQuantityState::GetClassId].endpoint(update_class_quantity_start_handler)),
+        )
+        .branch(
+            Update::filter_message()
+                .enter_dialogue::<Message, InMemStorage<UpdateClassQuantityState>, UpdateClassQuantityState>()
+                .branch(dptree::case![UpdateClassQuantityState::ReceiveQuantity {class_id}].endpoint(receive_quantity_handler)),
+        )
+        .branch(Update::filter_message().endpoint(message_handler));
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![
             InMemStorage::<AddClassState>::new(),
+            InMemStorage::<UpdateClassQuantityState>::new(),
             db.clone()
         ])
         .enable_ctrlc_handler()

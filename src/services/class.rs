@@ -100,3 +100,40 @@ pub async fn charge_class(
 
     Ok(updated_class)
 }
+
+
+pub async fn update_class_quantity(
+    db: &Pool<Sqlite>,
+    class_id: i64,
+    telegram_user_id: i64,
+    quantity: u8
+) -> anyhow::Result<Class> {
+    let user_id: i64 =
+        sqlx::query_scalar::<_, i64>("select user_id from user where telegram_id = ?")
+            .bind(telegram_user_id)
+            .fetch_one(db)
+            .await?;
+
+    let class: Class = sqlx::query_as::<_, Class>(
+        "select class_id, name, quantity, user_id
+         from class
+         where class_id = ? and user_id = ?",
+    )
+    .bind(class_id)
+    .bind(user_id)
+    .fetch_one(db)
+    .await?;
+
+    let updated_class = sqlx::query_as::<_, Class>(
+        "update class
+        set quantity = ?
+        where class_id = ?
+        returning class_id, name, quantity, user_id",
+    )
+    .bind(quantity)
+    .bind(class.class_id)
+    .fetch_one(db)
+    .await?;
+
+    Ok(updated_class)
+}

@@ -3,7 +3,7 @@ use std::error::Error;
 use teloxide::{payloads::SendMessageSetters, prelude::*, types::Me, utils::command::BotCommands};
 
 use crate::{
-    handlers::class::{list_classes_handler, class_settings_handler},
+    handlers::class::{class_settings_handler, list_classes_handler, update_quantity_handler},
     keyboards,
     services::user::add_user,
 };
@@ -61,6 +61,9 @@ pub async fn message_handler(
             }
             "Занятия (настройка)" => {
                 class_settings_handler(bot, msg).await?;
+            }
+            "Обновить количество" => {
+                update_quantity_handler(bot, msg, db).await?;
             }
             _ => {
                 bot.send_message(msg.chat.id, "Команда не найдена!").await?;
