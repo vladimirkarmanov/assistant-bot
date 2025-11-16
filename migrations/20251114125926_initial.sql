@@ -10,7 +10,7 @@ create table user (
 create table class (
     class_id integer primary key autoincrement,
     name text not null unique,
-    quantity integer not null check (quantity > 0),
+    quantity integer not null check (quantity >= 0),
     created_at text not null default current_timestamp,
     updated_at text not null default current_timestamp,
     user_id integer,
