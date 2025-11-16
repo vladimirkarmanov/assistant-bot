@@ -1,0 +1,8 @@
+services:
+  bot:
+    image: localhost:5000/assistant-bot:latest
+    restart: always
+    env_file:
+      - ./.env
+    volumes:
+      - ./data/:/app/data
