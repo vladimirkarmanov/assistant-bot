@@ -74,10 +74,13 @@ pub async fn message_handler(
     if let Some(text) = msg.text() {
         match text {
             "Списать занятие" => {
-                list_classes_handler(bot, msg, db).await?;
+                list_classes_for_charging_handler(bot, msg, db).await?;
             }
             "Занятия (настройка)" => {
                 class_settings_handler(bot, msg).await?;
+            }
+            "Список занятий" => {
+                list_classes_handler(bot, msg, db).await?;
             }
             "Обновить количество" => {
                 update_quantity_handler(bot, msg, db).await?;

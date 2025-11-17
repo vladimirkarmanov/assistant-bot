@@ -5,7 +5,7 @@ use crate::services::class::Class;
 pub fn make_main_menu_keyboard() -> KeyboardMarkup {
     let mut keyboard: Vec<Vec<KeyboardButton>> = vec![];
 
-    let main_menu_commands = ["Списать занятие", "Занятия (настройка)"];
+    let main_menu_commands = ["Списать занятие", "Занятия (настройка)", "Список занятий"];
 
     for commands in main_menu_commands.chunks(2) {
         let row = commands

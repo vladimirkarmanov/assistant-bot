@@ -82,7 +82,23 @@ pub async fn receive_quantity(
     Ok(())
 }
 
+
 pub async fn list_classes_handler(
+    bot: Bot,
+    msg: Message,
+    db: Pool<Sqlite>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let classes = get_classes_by_user_id(&db, msg.chat.id.0).await?;
+    let formatted_classes: Vec<String> = classes.iter().map(|s| s.to_string()).collect();
+    let joined = formatted_classes.join("\n");
+    bot.send_message(msg.chat.id, format!("{joined}"))
+        .parse_mode(ParseMode::Html)
+        .await?;
+    Ok(())
+}
+
+
+pub async fn list_classes_for_charging_handler(
     bot: Bot,
     msg: Message,
     db: Pool<Sqlite>,

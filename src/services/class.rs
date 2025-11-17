@@ -1,3 +1,5 @@
+use std::fmt;
+
 use anyhow::bail;
 use sqlx::{Pool, Sqlite, prelude::FromRow};
 
@@ -9,6 +11,12 @@ pub struct Class {
     pub name: String,
     pub quantity: u8,
     pub user_id: i64,
+}
+
+impl fmt::Display for Class {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} ({})", self.name, self.quantity)
+    }
 }
 
 pub async fn add_class(
