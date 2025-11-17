@@ -1,24 +1,14 @@
 use dptree::case;
 use sqlx::SqlitePool;
 use teloxide::{
-    dispatching::{dialogue::{ErasedStorage, InMemStorage}, HandlerExt},
+    dispatching::{HandlerExt, dialogue::InMemStorage},
     prelude::*,
     utils::command::BotCommands,
 };
 
 use crate::{
     config::Config,
-    handlers::{
-        class::{
-            AddClassState, UpdateClassQuantityState, add_class_start_handler,
-            charge_class_callback_handler, receive_name, receive_quantity,
-            receive_quantity_handler, update_class_quantity_start_handler,
-        },
-        command::{
-            Command, cancel_handler, help_handler, main_menu_handler, message_handler,
-            start_handler,
-        },
-    },
+    handlers::{class::*, command::*},
 };
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

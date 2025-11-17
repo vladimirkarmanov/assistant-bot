@@ -1,7 +1,9 @@
 use anyhow::bail;
 use sqlx::{Pool, Sqlite, prelude::FromRow};
 
-#[derive(Debug, FromRow)]
+use crate::{error::*, services::user::get_user_by_telegram_id};
+
+#[derive(FromRow)]
 pub struct Class {
     pub class_id: i64,
     pub name: String,
@@ -14,12 +16,13 @@ pub async fn add_class(
     name: String,
     quantity: u8,
     telegram_user_id: i64,
-) -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
-    let user_id: i64 =
-        sqlx::query_scalar::<_, i64>("select user_id from user where telegram_id = ?")
-            .bind(telegram_user_id)
-            .fetch_one(db)
-            .await?;
+) -> anyhow::Result<i64> {
+    let user_id = match get_user_by_telegram_id(db, telegram_user_id).await? {
+        Some(u) => u.user_id,
+        None => {
+            bail!(UserNotFoundError);
+        }
+    };
 
     let result = sqlx::query(
         "insert into class (name, quantity, user_id)
@@ -38,12 +41,13 @@ pub async fn add_class(
 pub async fn get_classes_by_user_id(
     db: &Pool<Sqlite>,
     telegram_user_id: i64,
-) -> Result<Vec<Class>, Box<dyn std::error::Error + Send + Sync>> {
-    let user_id: i64 =
-        sqlx::query_scalar::<_, i64>("select user_id from user where telegram_id = ?")
-            .bind(telegram_user_id)
-            .fetch_one(db)
-            .await?;
+) -> anyhow::Result<Vec<Class>> {
+    let user_id = match get_user_by_telegram_id(db, telegram_user_id).await? {
+        Some(u) => u.user_id,
+        None => {
+            bail!(UserNotFoundError);
+        }
+    };
 
     let classes: Vec<Class> = sqlx::query_as::<_, Class>(
         "select class_id, name, quantity, user_id
@@ -57,30 +61,42 @@ pub async fn get_classes_by_user_id(
     Ok(classes)
 }
 
-#[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
-#[error("Не удалось списать занятие. Количество доступных занятий {0}")]
-struct NotEnoughClassQuantityToChargeError(u8);
+pub async fn get_class_by_id(
+    db: &Pool<Sqlite>,
+    class_id: i64,
+    user_id: i64,
+) -> anyhow::Result<Option<Class>> {
+    let class: Option<Class> = sqlx::query_as::<_, Class>(
+        "select class_id, name, quantity, user_id
+             from class
+             where class_id = ? and user_id = ?",
+    )
+    .bind(class_id)
+    .bind(user_id)
+    .fetch_optional(db)
+    .await?;
+
+    Ok(class)
+}
 
 pub async fn charge_class(
     db: &Pool<Sqlite>,
     class_id: i64,
     telegram_user_id: i64,
 ) -> anyhow::Result<Class> {
-    let user_id: i64 =
-        sqlx::query_scalar::<_, i64>("select user_id from user where telegram_id = ?")
-            .bind(telegram_user_id)
-            .fetch_one(db)
-            .await?;
+    let user_id = match get_user_by_telegram_id(db, telegram_user_id).await? {
+        Some(u) => u.user_id,
+        None => {
+            bail!(UserNotFoundError);
+        }
+    };
 
-    let class: Class = sqlx::query_as::<_, Class>(
-        "select class_id, name, quantity, user_id
-         from class
-         where class_id = ? and user_id = ?",
-    )
-    .bind(class_id)
-    .bind(user_id)
-    .fetch_one(db)
-    .await?;
+    let class = match get_class_by_id(db, class_id, user_id).await? {
+        Some(c) => c,
+        None => {
+            bail!(ClassNotFoundError);
+        }
+    };
 
     if class.quantity == 0 {
         bail!(NotEnoughClassQuantityToChargeError(class.quantity));
@@ -101,28 +117,25 @@ pub async fn charge_class(
     Ok(updated_class)
 }
 
-
 pub async fn update_class_quantity(
     db: &Pool<Sqlite>,
     class_id: i64,
     telegram_user_id: i64,
-    quantity: u8
+    quantity: u8,
 ) -> anyhow::Result<Class> {
-    let user_id: i64 =
-        sqlx::query_scalar::<_, i64>("select user_id from user where telegram_id = ?")
-            .bind(telegram_user_id)
-            .fetch_one(db)
-            .await?;
+    let user_id = match get_user_by_telegram_id(db, telegram_user_id).await? {
+        Some(u) => u.user_id,
+        None => {
+            bail!(UserNotFoundError);
+        }
+    };
 
-    let class: Class = sqlx::query_as::<_, Class>(
-        "select class_id, name, quantity, user_id
-         from class
-         where class_id = ? and user_id = ?",
-    )
-    .bind(class_id)
-    .bind(user_id)
-    .fetch_one(db)
-    .await?;
+    let class = match get_class_by_id(db, class_id, user_id).await? {
+        Some(c) => c,
+        None => {
+            bail!(ClassNotFoundError);
+        }
+    };
 
     let updated_class = sqlx::query_as::<_, Class>(
         "update class

@@ -2,20 +2,12 @@ use sqlx::{Pool, Sqlite};
 use std::{error::Error, sync::Arc};
 use teloxide::{
     dispatching::dialogue::{InMemStorage, Storage},
-    dptree::HandlerResult,
     payloads::SendMessageSetters,
     prelude::*,
     utils::command::BotCommands,
 };
 
-use crate::{
-    handlers::class::{
-        AddClassState, UpdateClassQuantityState, class_settings_handler, list_classes_handler,
-        update_quantity_handler,
-    },
-    keyboards,
-    services::user::add_user,
-};
+use crate::{handlers::class::*, keyboards, services::user::*};
 use teloxide::{Bot, types::Message};
 
 #[derive(BotCommands, Clone)]
@@ -35,7 +27,7 @@ pub async fn start_handler(
     bot: Bot,
     msg: Message,
     db: Pool<Sqlite>,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+) -> anyhow::Result<(), Box<dyn Error + Send + Sync>> {
     bot.send_message(
         msg.chat.id,
         format!("Я бот помощник. Посмотри что я умею: /help"),
@@ -89,6 +81,9 @@ pub async fn message_handler(
             }
             "Обновить количество" => {
                 update_quantity_handler(bot, msg, db).await?;
+            }
+            "Главное меню" => {
+                main_menu_handler(bot, msg).await?;
             }
             _ => {
                 bot.send_message(msg.chat.id, "Команда не найдена!").await?;

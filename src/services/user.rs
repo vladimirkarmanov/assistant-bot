@@ -1,16 +1,13 @@
 use sqlx::{Pool, Sqlite, prelude::FromRow};
 
-#[derive(Debug, FromRow)]
+#[derive(FromRow)]
 pub struct User {
     pub user_id: i64,
     pub telegram_id: i64,
     pub username: Option<String>,
 }
 
-pub async fn does_user_exist(
-    db: &Pool<Sqlite>,
-    telegram_id: i64,
-) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn does_user_exist(db: &Pool<Sqlite>, telegram_id: i64) -> anyhow::Result<bool> {
     let user: Option<(i64,)> = sqlx::query_as("select user_id from user where telegram_id = ?")
         .bind(telegram_id)
         .fetch_optional(db)
@@ -19,20 +16,27 @@ pub async fn does_user_exist(
     Ok(user.is_some())
 }
 
-pub async fn add_user(
+pub async fn get_user_by_telegram_id(
     db: &Pool<Sqlite>,
     telegram_id: i64,
-    username: &str,
-) -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
-    if does_user_exist(db, telegram_id).await? {
-        return Err("User already exists".into());
-    }
-    let result = sqlx::query("insert into user (telegram_id, username) values (?, ?)")
-        .bind(telegram_id)
-        .bind(username)
-        .execute(db)
-        .await?;
+) -> anyhow::Result<Option<User>> {
+    let user: Option<User> = sqlx::query_as::<_, User>(
+        "select user_id, telegram_id, username from user where telegram_id = ?",
+    )
+    .bind(telegram_id)
+    .fetch_optional(db)
+    .await?;
 
-    let user_id = result.last_insert_rowid();
-    Ok(user_id)
+    Ok(user)
+}
+
+pub async fn add_user(db: &Pool<Sqlite>, telegram_id: i64, username: &str) -> anyhow::Result<()> {
+    if !does_user_exist(db, telegram_id).await? {
+        sqlx::query("insert into user (telegram_id, username) values (?, ?)")
+            .bind(telegram_id)
+            .bind(username)
+            .execute(db)
+            .await?;
+    }
+    Ok(())
 }

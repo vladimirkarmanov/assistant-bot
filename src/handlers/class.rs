@@ -4,10 +4,7 @@ use teloxide::{
     dispatching::dialogue::InMemStorage, payloads::SendMessageSetters, prelude::*, types::ParseMode,
 };
 
-use crate::{
-    keyboards,
-    services::class::{add_class, charge_class, get_classes_by_user_id, update_class_quantity},
-};
+use crate::{keyboards, services::class::*};
 
 #[derive(Clone, Default)]
 pub enum AddClassState {
