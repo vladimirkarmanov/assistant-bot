@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::Deref, sync::Arc};
 
 use anyhow::bail;
 use sqlx::{Pool, Sqlite, prelude::FromRow};
@@ -20,12 +20,12 @@ impl fmt::Display for Class {
 }
 
 pub async fn add_class(
-    db: &Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
     name: String,
     quantity: u8,
     telegram_user_id: i64,
 ) -> anyhow::Result<i64> {
-    let user_id = match get_user_by_telegram_id(db, telegram_user_id).await? {
+    let user_id = match get_user_by_telegram_id(db.clone(), telegram_user_id).await? {
         Some(u) => u.user_id,
         None => {
             bail!(UserNotFoundError);
@@ -39,7 +39,7 @@ pub async fn add_class(
     .bind(name)
     .bind(quantity as i64)
     .bind(user_id)
-    .execute(db)
+    .execute(db.as_ref())
     .await?;
 
     let class_id = result.last_insert_rowid();
@@ -47,10 +47,10 @@ pub async fn add_class(
 }
 
 pub async fn get_classes_by_user_id(
-    db: &Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
     telegram_user_id: i64,
 ) -> anyhow::Result<Vec<Class>> {
-    let user_id = match get_user_by_telegram_id(db, telegram_user_id).await? {
+    let user_id = match get_user_by_telegram_id(db.clone(), telegram_user_id).await? {
         Some(u) => u.user_id,
         None => {
             bail!(UserNotFoundError);
@@ -63,14 +63,14 @@ pub async fn get_classes_by_user_id(
          where user_id = ?",
     )
     .bind(user_id)
-    .fetch_all(db)
+    .fetch_all(db.as_ref())
     .await?;
 
     Ok(classes)
 }
 
 pub async fn get_class_by_id(
-    db: &Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
     class_id: i64,
     user_id: i64,
 ) -> anyhow::Result<Option<Class>> {
@@ -81,25 +81,25 @@ pub async fn get_class_by_id(
     )
     .bind(class_id)
     .bind(user_id)
-    .fetch_optional(db)
+    .fetch_optional(db.as_ref())
     .await?;
 
     Ok(class)
 }
 
 pub async fn charge_class(
-    db: &Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
     class_id: i64,
     telegram_user_id: i64,
 ) -> anyhow::Result<Class> {
-    let user_id = match get_user_by_telegram_id(db, telegram_user_id).await? {
+    let user_id = match get_user_by_telegram_id(db.clone(), telegram_user_id).await? {
         Some(u) => u.user_id,
         None => {
             bail!(UserNotFoundError);
         }
     };
 
-    let class = match get_class_by_id(db, class_id, user_id).await? {
+    let class = match get_class_by_id(db.clone(), class_id, user_id).await? {
         Some(c) => c,
         None => {
             bail!(ClassNotFoundError);
@@ -119,26 +119,26 @@ pub async fn charge_class(
     )
     .bind(new_quantity)
     .bind(class.class_id)
-    .fetch_one(db)
+    .fetch_one(db.as_ref())
     .await?;
 
     Ok(updated_class)
 }
 
 pub async fn update_class_quantity(
-    db: &Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
     class_id: i64,
     telegram_user_id: i64,
     quantity: u8,
 ) -> anyhow::Result<Class> {
-    let user_id = match get_user_by_telegram_id(db, telegram_user_id).await? {
+    let user_id = match get_user_by_telegram_id(db.clone(), telegram_user_id).await? {
         Some(u) => u.user_id,
         None => {
             bail!(UserNotFoundError);
         }
     };
 
-    let class = match get_class_by_id(db, class_id, user_id).await? {
+    let class = match get_class_by_id(db.clone(), class_id, user_id).await? {
         Some(c) => c,
         None => {
             bail!(ClassNotFoundError);
@@ -153,7 +153,7 @@ pub async fn update_class_quantity(
     )
     .bind(quantity)
     .bind(class.class_id)
-    .fetch_one(db)
+    .fetch_one(db.as_ref())
     .await?;
 
     Ok(updated_class)

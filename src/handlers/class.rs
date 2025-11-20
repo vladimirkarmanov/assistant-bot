@@ -1,5 +1,5 @@
 use sqlx::{Pool, Sqlite};
-use std::error::Error;
+use std::{error::Error, sync::Arc};
 use teloxide::{
     dispatching::dialogue::InMemStorage, payloads::SendMessageSetters, prelude::*, types::ParseMode,
 };
@@ -14,6 +14,17 @@ pub enum AddClassState {
     ReceiveQuantity {
         name: String,
     },
+}
+
+pub async fn classes_menu_handler(
+    bot: Bot,
+    msg: Message,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    bot.send_message(msg.chat.id, "Переход в раздел Занятия")
+        .reply_markup(keyboards::make_classes_menu_keyboard())
+        .parse_mode(ParseMode::Html)
+        .await?;
+    Ok(())
 }
 
 pub async fn class_settings_handler(
@@ -63,11 +74,11 @@ pub async fn receive_quantity(
     dialogue: Dialogue<AddClassState, InMemStorage<AddClassState>>,
     name: String,
     msg: Message,
-    db: Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match msg.text().map(|text| text.parse::<u8>()) {
         Some(Ok(quantity)) => {
-            let class = match add_class(&db, name, quantity, msg.chat.id.0).await {
+            let class = match add_class(db, name, quantity, msg.chat.id.0).await {
                 Ok(_) => "✅ Занятие успешно добавлено!".to_string(),
                 Err(err) => err.to_string(),
             };
@@ -82,13 +93,12 @@ pub async fn receive_quantity(
     Ok(())
 }
 
-
 pub async fn list_classes_handler(
     bot: Bot,
     msg: Message,
-    db: Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let classes = get_classes_by_user_id(&db, msg.chat.id.0).await?;
+    let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
     let formatted_classes: Vec<String> = classes.iter().map(|s| s.to_string()).collect();
     let joined = formatted_classes.join("\n");
     bot.send_message(msg.chat.id, format!("{joined}"))
@@ -97,13 +107,12 @@ pub async fn list_classes_handler(
     Ok(())
 }
 
-
 pub async fn list_classes_for_charging_handler(
     bot: Bot,
     msg: Message,
-    db: Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let classes = get_classes_by_user_id(&db, msg.chat.id.0).await?;
+    let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
     let keyboard = keyboards::make_class_list_keyboard(classes, 2, "charge_class:");
     let output = "Выберите занятие для списания";
     bot.send_message(msg.chat.id, output)
@@ -116,7 +125,7 @@ pub async fn list_classes_for_charging_handler(
 pub async fn charge_class_callback_handler(
     bot: Bot,
     q: CallbackQuery,
-    db: Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     if let Some(ref data) = q.data {
         if let Some((_, id)) = data.split_once(':') {
@@ -124,7 +133,7 @@ pub async fn charge_class_callback_handler(
             bot.answer_callback_query(q.id.clone()).await?;
 
             let output: String;
-            match charge_class(&db, class_id, q.from.id.0.try_into().unwrap()).await {
+            match charge_class(db.clone(), class_id, q.from.id.0.try_into().unwrap()).await {
                 Ok(class) => {
                     output = format!(
                         "✅ Занятие {name} успешно списано! Остаток: {quantity}",
@@ -151,9 +160,9 @@ pub async fn charge_class_callback_handler(
 pub async fn update_quantity_handler(
     bot: Bot,
     msg: Message,
-    db: Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let classes = get_classes_by_user_id(&db, msg.chat.id.0).await?;
+    let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
     let keyboard = keyboards::make_class_list_keyboard(classes, 2, "update_quantity:");
     let output = "Выберите занятие для обновления";
     bot.send_message(msg.chat.id, output)
@@ -199,13 +208,13 @@ pub async fn receive_quantity_handler(
     bot: Bot,
     msg: Message,
     dialogue: Dialogue<UpdateClassQuantityState, InMemStorage<UpdateClassQuantityState>>,
-    db: Pool<Sqlite>,
+    db: Arc<Pool<Sqlite>>,
     class_id: i64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match msg.text().map(|text| text.parse::<u8>()) {
         Some(Ok(quantity)) => {
             let output: String;
-            match update_class_quantity(&db, class_id, msg.chat.id.0, quantity).await {
+            match update_class_quantity(db.clone(), class_id, msg.chat.id.0, quantity).await {
                 Ok(class) => {
                     output = format!(
                         "✅ Занятие {name} успешно обновлено! Остаток: {quantity}",

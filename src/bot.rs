@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use dptree::case;
-use sqlx::SqlitePool;
+use sqlx::{Pool, Sqlite, SqlitePool};
 use teloxide::{
     dispatching::{HandlerExt, dialogue::InMemStorage},
     prelude::*,
@@ -84,7 +86,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .dependencies(dptree::deps![
             InMemStorage::<AddClassState>::new(),
             InMemStorage::<UpdateClassQuantityState>::new(),
-            db.clone()
+            Arc::new(db.clone())
         ])
         .enable_ctrlc_handler()
         .build()
