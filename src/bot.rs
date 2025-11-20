@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use dptree::case;
-use sqlx::{Pool, Sqlite, SqlitePool};
+use sqlx::SqlitePool;
 use teloxide::{
     dispatching::{HandlerExt, dialogue::InMemStorage},
     prelude::*,
@@ -9,6 +9,7 @@ use teloxide::{
 };
 
 use crate::{
+    commands::{Command, MenuAction},
     config::Config,
     handlers::{class::*, command::*},
 };
@@ -41,7 +42,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .branch(
             Update::filter_message().branch(
                 dptree::filter(|msg: Message| {
-                    msg.text().map(|t| t == "Добавить занятие").unwrap_or(false)
+                    msg.text().map(|t| t == MenuAction::AddClass.label()).unwrap_or(false)
                 })
                 .enter_dialogue::<Message, InMemStorage<AddClassState>, AddClassState>()
                 .branch(case![AddClassState::Idle].endpoint(add_class_start_handler)),

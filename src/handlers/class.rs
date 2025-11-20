@@ -4,7 +4,11 @@ use teloxide::{
     dispatching::dialogue::InMemStorage, payloads::SendMessageSetters, prelude::*, types::ParseMode,
 };
 
-use crate::{keyboards, services::class::*};
+use crate::{
+    commands::MenuAction,
+    keyboards::{self, MainMenuButton},
+    services::class::*,
+};
 
 #[derive(Clone, Default)]
 pub enum AddClassState {
@@ -20,8 +24,22 @@ pub async fn classes_menu_handler(
     bot: Bot,
     msg: Message,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let buttons = vec![
+        MainMenuButton {
+            text: MenuAction::ChargeClass.label().to_string(),
+        },
+        MainMenuButton {
+            text: MenuAction::ClassSettings.label().to_string(),
+        },
+        MainMenuButton {
+            text: MenuAction::ListClasses.label().to_string(),
+        },
+        MainMenuButton {
+            text: MenuAction::MainMenu.label().to_string(),
+        },
+    ];
     bot.send_message(msg.chat.id, "Переход в раздел Занятия")
-        .reply_markup(keyboards::make_classes_menu_keyboard())
+        .reply_markup(keyboards::make_main_menu_keyboard(buttons, 2))
         .parse_mode(ParseMode::Html)
         .await?;
     Ok(())
@@ -31,8 +49,19 @@ pub async fn class_settings_handler(
     bot: Bot,
     msg: Message,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let buttons = vec![
+        MainMenuButton {
+            text: MenuAction::AddClass.label().to_string(),
+        },
+        MainMenuButton {
+            text: MenuAction::UpdateQuantity.label().to_string(),
+        },
+        MainMenuButton {
+            text: MenuAction::MainMenu.label().to_string(),
+        },
+    ];
     bot.send_message(msg.chat.id, "Настройки занятий")
-        .reply_markup(keyboards::class_settings_keyboard())
+        .reply_markup(keyboards::make_main_menu_keyboard(buttons, 2))
         .parse_mode(ParseMode::Html)
         .await?;
     Ok(())
@@ -100,8 +129,8 @@ pub async fn list_classes_handler(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
     let formatted_classes: Vec<String> = classes.iter().map(|s| s.to_string()).collect();
-    let joined = formatted_classes.join("\n");
-    bot.send_message(msg.chat.id, format!("{joined}"))
+    let output = formatted_classes.join("\n");
+    bot.send_message(msg.chat.id, output)
         .parse_mode(ParseMode::Html)
         .await?;
     Ok(())
@@ -113,7 +142,7 @@ pub async fn list_classes_for_charging_handler(
     db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
-    let keyboard = keyboards::make_class_list_keyboard(classes, 2, "charge_class:");
+    let keyboard = keyboards::make_class_list_inline_keyboard(classes, 2, "charge_class:");
     let output = "Выберите занятие для списания";
     bot.send_message(msg.chat.id, output)
         .reply_markup(keyboard)
@@ -127,30 +156,27 @@ pub async fn charge_class_callback_handler(
     q: CallbackQuery,
     db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    if let Some(ref data) = q.data {
-        if let Some((_, id)) = data.split_once(':') {
-            let class_id: i64 = id.parse()?;
-            bot.answer_callback_query(q.id.clone()).await?;
+    if let Some(ref data) = q.data
+        && let Some((_, id)) = data.split_once(':')
+    {
+        let class_id: i64 = id.parse()?;
+        bot.answer_callback_query(q.id.clone()).await?;
 
-            let output: String;
-            match charge_class(db.clone(), class_id, q.from.id.0.try_into().unwrap()).await {
-                Ok(class) => {
-                    output = format!(
-                        "✅ Занятие {name} успешно списано! Остаток: {quantity}",
-                        name = class.name,
-                        quantity = class.quantity
-                    );
-                }
-                Err(err) => {
-                    output = err.to_string();
-                }
-            };
-
-            // Edit text of the message to which the buttons were attached
-            if let Some(message) = q.regular_message() {
-                bot.edit_message_text(message.chat.id, message.id, output)
-                    .await?;
+        let output = match charge_class(db.clone(), class_id, q.from.id.0.try_into().unwrap()).await
+        {
+            Ok(class) => {
+                format!(
+                    "✅ Занятие {name} успешно списано! Остаток: {quantity}",
+                    name = class.name,
+                    quantity = class.quantity
+                )
             }
+            Err(err) => err.to_string(),
+        };
+
+        if let Some(message) = q.regular_message() {
+            bot.edit_message_text(message.chat.id, message.id, output)
+                .await?;
         }
     }
 
@@ -163,7 +189,7 @@ pub async fn update_quantity_handler(
     db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
-    let keyboard = keyboards::make_class_list_keyboard(classes, 2, "update_quantity:");
+    let keyboard = keyboards::make_class_list_inline_keyboard(classes, 2, "update_quantity:");
     let output = "Выберите занятие для обновления";
     bot.send_message(msg.chat.id, output)
         .reply_markup(keyboard)
@@ -188,17 +214,17 @@ pub async fn update_class_quantity_start_handler(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     bot.answer_callback_query(q.id.clone()).await?;
 
-    if let Some(ref data) = q.data {
-        if let Some((_, id)) = data.split_once(':') {
-            let class_id: i64 = id.parse()?;
-            dialogue
-                .update(UpdateClassQuantityState::ReceiveQuantity { class_id: class_id })
-                .await?;
+    if let Some(ref data) = q.data
+        && let Some((_, id)) = data.split_once(':')
+    {
+        let class_id: i64 = id.parse()?;
+        dialogue
+            .update(UpdateClassQuantityState::ReceiveQuantity { class_id })
+            .await?;
 
-            bot.send_message(q.from.id, "Введите количество:").await?;
-        } else {
-            bot.send_message(q.from.id, "Ошибка").await?;
-        }
+        bot.send_message(q.from.id, "Введите количество:").await?;
+    } else {
+        bot.send_message(q.from.id, "Ошибка").await?;
     }
 
     Ok(())
@@ -213,19 +239,17 @@ pub async fn receive_quantity_handler(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match msg.text().map(|text| text.parse::<u8>()) {
         Some(Ok(quantity)) => {
-            let output: String;
-            match update_class_quantity(db.clone(), class_id, msg.chat.id.0, quantity).await {
-                Ok(class) => {
-                    output = format!(
-                        "✅ Занятие {name} успешно обновлено! Остаток: {quantity}",
-                        name = class.name,
-                        quantity = class.quantity
-                    );
-                }
-                Err(err) => {
-                    output = err.to_string();
-                }
-            };
+            let output =
+                match update_class_quantity(db.clone(), class_id, msg.chat.id.0, quantity).await {
+                    Ok(class) => {
+                        format!(
+                            "✅ Занятие {name} успешно обновлено! Остаток: {quantity}",
+                            name = class.name,
+                            quantity = class.quantity
+                        )
+                    }
+                    Err(err) => err.to_string(),
+                };
             dialogue.exit().await?;
             bot.send_message(msg.chat.id, output)
                 .parse_mode(ParseMode::Html)

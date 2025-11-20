@@ -7,32 +7,21 @@ use teloxide::{
     utils::command::BotCommands,
 };
 
-use crate::{handlers::class::*, keyboards, services::user::*};
+use crate::{
+    commands::{Command, MenuAction},
+    handlers::class::*,
+    keyboards::{self, MainMenuButton},
+    services::user::*,
+};
 use teloxide::{Bot, types::Message};
-
-#[derive(BotCommands, Clone)]
-#[command(rename_rule = "snake_case", description = "Доступные команды:")]
-pub enum Command {
-    #[command(description = "Перезапустить бота ♻️")]
-    Start,
-    #[command(description = "Перейти в главное меню 🏠")]
-    MainMenu,
-    #[command(description = "Отменить операцию ❌")]
-    CancelOperation,
-    #[command(description = "Помощь ℹ️")]
-    Help,
-}
 
 pub async fn start_handler(
     bot: Bot,
     msg: Message,
     db: Arc<Pool<Sqlite>>,
 ) -> anyhow::Result<(), Box<dyn Error + Send + Sync>> {
-    bot.send_message(
-        msg.chat.id,
-        format!("Я бот помощник. Посмотри что я умею: /help"),
-    )
-    .await?;
+    bot.send_message(msg.chat.id, "Я бот помощник. Посмотри что я умею: /help")
+        .await?;
     add_user(db.clone(), msg.chat.id.0, msg.chat.username().unwrap_or("")).await?;
     Ok(())
 }
@@ -44,7 +33,10 @@ pub async fn help_handler(bot: Bot, msg: Message) -> Result<(), Box<dyn Error + 
 }
 
 pub async fn main_menu_handler(bot: Bot, msg: Message) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let keyboard = keyboards::make_main_menu_keyboard();
+    let buttons = vec![MainMenuButton {
+        text: MenuAction::Classes.label().to_string(),
+    }];
+    let keyboard = keyboards::make_main_menu_keyboard(buttons, 2);
     bot.send_message(msg.chat.id, "Переход в главное меню")
         .reply_markup(keyboard)
         .await?;
@@ -62,7 +54,7 @@ pub async fn cancel_handler(
     let _ = add_storage.remove_dialogue(chat_id).await;
     let _ = upd_storage.remove_dialogue(chat_id).await;
 
-    bot.send_message(chat_id, "Отмена успешна").await?;
+    bot.send_message(chat_id, "Отмена операции").await?;
     Ok(())
 }
 
@@ -72,23 +64,27 @@ pub async fn message_handler(
     db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     if let Some(text) = msg.text() {
-        match text {
-            "Списать занятие" => {
+        match MenuAction::parse(text) {
+            Some(MenuAction::Classes) => {
+                classes_menu_handler(bot, msg).await?;
+            }
+            Some(MenuAction::AddClass) => {}
+            Some(MenuAction::ChargeClass) => {
                 list_classes_for_charging_handler(bot, msg, db).await?;
             }
-            "Занятия (настройка)" => {
+            Some(MenuAction::ClassSettings) => {
                 class_settings_handler(bot, msg).await?;
             }
-            "Список занятий" => {
+            Some(MenuAction::ListClasses) => {
                 list_classes_handler(bot, msg, db).await?;
             }
-            "Обновить количество" => {
+            Some(MenuAction::UpdateQuantity) => {
                 update_quantity_handler(bot, msg, db).await?;
             }
-            "Главное меню" => {
+            Some(MenuAction::MainMenu) => {
                 main_menu_handler(bot, msg).await?;
             }
-            _ => {
+            None => {
                 bot.send_message(msg.chat.id, "Команда не найдена!").await?;
             }
         }
