@@ -2,44 +2,28 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton
 
 use crate::services::class::Class;
 
-pub fn make_main_menu_keyboard() -> KeyboardMarkup {
-    let mut keyboard: Vec<Vec<KeyboardButton>> = vec![];
-
-    let main_menu_commands = ["Списать занятие", "Занятия (настройка)", "Список занятий"];
-
-    for commands in main_menu_commands.chunks(2) {
-        let row = commands
-            .iter()
-            .map(|&command| KeyboardButton::new(command.to_owned()))
-            .collect();
-
-        keyboard.push(row);
-    }
-
-    KeyboardMarkup::new(keyboard).persistent()
+pub struct MainMenuButton {
+    pub text: String,
 }
 
-pub fn class_settings_keyboard() -> KeyboardMarkup {
-    let mut keyboard: Vec<Vec<KeyboardButton>> = vec![];
-
-    let main_menu_commands = ["Добавить занятие", "Обновить количество", "Главное меню"];
-
-    for commands in main_menu_commands.chunks(2) {
-        let row = commands
-            .iter()
-            .map(|&command| KeyboardButton::new(command.to_owned()))
-            .collect();
-
-        keyboard.push(row);
-    }
-
-    KeyboardMarkup::new(keyboard).persistent()
-}
-
-#[derive(Debug)]
 struct InlineButton {
     text: String,
     callback_data: String,
+}
+
+pub fn make_main_menu_keyboard(buttons: Vec<MainMenuButton>, row_size: usize) -> KeyboardMarkup {
+    let mut keyboard: Vec<Vec<KeyboardButton>> = vec![];
+
+    for buttons in buttons.chunks(row_size) {
+        let row = buttons
+            .iter()
+            .map(|button| KeyboardButton::new(button.text.to_owned()))
+            .collect();
+
+        keyboard.push(row);
+    }
+
+    KeyboardMarkup::new(keyboard).persistent()
 }
 
 fn make_inline_keyboard(buttons: Vec<InlineButton>, row_size: usize) -> InlineKeyboardMarkup {
@@ -62,7 +46,7 @@ fn make_inline_keyboard(buttons: Vec<InlineButton>, row_size: usize) -> InlineKe
     InlineKeyboardMarkup::new(keyboard)
 }
 
-pub fn make_class_list_keyboard(
+pub fn make_class_list_inline_keyboard(
     elements: Vec<Class>,
     row_size: usize,
     callback_data_prefix: &str,
@@ -74,6 +58,5 @@ pub fn make_class_list_keyboard(
             callback_data: format!("{}{}", callback_data_prefix, element.class_id),
         })
         .collect();
-    let keyboard = make_inline_keyboard(buttons, row_size);
-    keyboard
+    make_inline_keyboard(buttons, row_size)
 }

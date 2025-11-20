@@ -1,9 +1,9 @@
-use std::{fmt, ops::Deref, sync::Arc};
+use std::{fmt, sync::Arc};
 
 use anyhow::bail;
 use sqlx::{Pool, Sqlite, prelude::FromRow};
 
-use crate::{error::*, services::user::get_user_by_telegram_id};
+use crate::{errors::*, services::user::get_user_by_telegram_id};
 
 #[derive(FromRow)]
 pub struct Class {

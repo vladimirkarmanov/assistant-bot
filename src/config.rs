@@ -3,14 +3,12 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, Clone)]
 pub struct DatabaseConfig {
     pub path: String,
-    pub url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub bot_token: String,
     pub database: DatabaseConfig,
-    pub debug: bool,
 }
 
 impl Config {

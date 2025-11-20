@@ -5,3 +5,6 @@ run:
 
 deploy:
 	/bin/bash deploy.sh
+
+clippy:
+	cargo clippy

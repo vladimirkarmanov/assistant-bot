@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use dptree::case;
-use sqlx::{Pool, Sqlite, SqlitePool};
+use sqlx::SqlitePool;
 use teloxide::{
     dispatching::{HandlerExt, dialogue::InMemStorage},
     prelude::*,
@@ -9,8 +9,10 @@ use teloxide::{
 };
 
 use crate::{
+    commands::Command,
     config::Config,
     handlers::{class::*, command::*},
+    state::State,
 };
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -36,56 +38,30 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .branch(case![Command::Help].endpoint(help_handler))
                 .branch(case![Command::Start].endpoint(start_handler))
                 .branch(case![Command::MainMenu].endpoint(main_menu_handler))
-                .branch(case![Command::CancelOperation].endpoint(cancel_handler))
-        )
-        .branch(
-            Update::filter_message().branch(
-                dptree::filter(|msg: Message| {
-                    msg.text().map(|t| t == "Добавить занятие").unwrap_or(false)
-                })
-                .enter_dialogue::<Message, InMemStorage<AddClassState>, AddClassState>()
-                .branch(case![AddClassState::Idle].endpoint(add_class_start_handler)),
-            ),
+                .branch(case![Command::CancelOperation].endpoint(cancel_handler)),
         )
         .branch(
             Update::filter_message()
-                .enter_dialogue::<Message, InMemStorage<AddClassState>, AddClassState>()
-                .branch(dptree::case![AddClassState::ReceiveName].endpoint(receive_name))
+                .enter_dialogue::<Message, InMemStorage<State>, State>()
+                .branch(case![State::Idle].endpoint(idle_message_handler))
+                .branch(case![State::AddingClassReceiveName].endpoint(receive_name))
                 .branch(
-                    dptree::case![AddClassState::ReceiveQuantity { name }]
-                        .endpoint(receive_quantity),
+                    case![State::AddingClassReceiveQuantity { name }].endpoint(receive_quantity),
+                )
+                .branch(
+                    case![State::UpdatingClassReceiveQuantity { class_id }]
+                        .endpoint(receive_quantity_handler),
                 ),
         )
         .branch(
             Update::filter_callback_query()
-                .filter(|q: CallbackQuery| {
-                    q.data
-                        .as_deref()
-                        .is_some_and(|d| d.starts_with("charge_class:"))
-                })
-                .endpoint(charge_class_callback_handler),
-        )
-        .branch(
-            Update::filter_callback_query()
-                .filter(|q: CallbackQuery| {
-                    q.data
-                        .as_deref()
-                        .is_some_and(|d| d.starts_with("update_quantity:"))
-                })
-                .enter_dialogue::<CallbackQuery, InMemStorage<UpdateClassQuantityState>, UpdateClassQuantityState>()
-                .branch(case![UpdateClassQuantityState::GetClassId].endpoint(update_class_quantity_start_handler)),
-        )
-        .branch(
-            Update::filter_message()
-                .enter_dialogue::<Message, InMemStorage<UpdateClassQuantityState>, UpdateClassQuantityState>()
-                .branch(dptree::case![UpdateClassQuantityState::ReceiveQuantity {class_id}].endpoint(receive_quantity_handler)),
-        )
-        .branch(Update::filter_message().endpoint(message_handler));
+                .enter_dialogue::<CallbackQuery, InMemStorage<State>, State>()
+                .branch(case![State::Idle].endpoint(idle_callback_handler)),
+        );
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![
-            InMemStorage::<AddClassState>::new(),
-            InMemStorage::<UpdateClassQuantityState>::new(),
+            InMemStorage::<State>::new(),
             Arc::new(db.clone())
         ])
         .enable_ctrlc_handler()
