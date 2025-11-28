@@ -8,3 +8,6 @@ deploy:
 
 clippy:
 	cargo clippy
+
+db-migrate:
+	set -a && source .env && sqlx migrate run

@@ -12,6 +12,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release
+RUN cargo install sqlx-cli --no-default-features --features sqlite
 
 FROM debian:trixie-slim AS runtime
 
@@ -20,5 +21,7 @@ RUN apt-get update && apt-get install -y ca-certificates tzdata && rm -rf /var/l
 WORKDIR /app
 
 COPY --from=builder /app/target/release/assistant-bot ./bot
+COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /usr/local/cargo/bin/sqlx /usr/local/bin/sqlx
 
-ENTRYPOINT ["./bot"]
+ENTRYPOINT ["sh", "-c", "sqlx migrate run && exec ./bot"]
