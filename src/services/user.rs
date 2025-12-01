@@ -4,9 +4,9 @@ use sqlx::{Pool, Sqlite, prelude::FromRow};
 
 #[derive(FromRow)]
 pub struct User {
+    pub username: Option<String>,
     pub user_id: i64,
     pub telegram_id: i64,
-    pub username: Option<String>,
 }
 
 pub async fn does_user_exist(db: Arc<Pool<Sqlite>>, telegram_id: i64) -> anyhow::Result<bool> {

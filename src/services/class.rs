@@ -7,17 +7,17 @@ use crate::{errors::*, services::user::get_user_by_telegram_id};
 
 #[derive(FromRow)]
 pub struct Class {
-    pub class_id: i64,
     pub name: String,
-    pub quantity: u8,
+    pub class_id: i64,
     pub user_id: i64,
+    pub quantity: u8,
 }
 
 #[derive(FromRow)]
 pub struct ClassDeductionHistory {
+    pub created_at: String,
     pub class_deduction_history_id: i64,
     pub class_id: i64,
-    pub created_at: String,
 }
 
 impl fmt::Display for Class {
@@ -76,6 +76,29 @@ pub async fn get_classes_by_user_id(
     Ok(classes)
 }
 
+// pub async fn get_classes_deduction_history(
+//     db: Arc<Pool<Sqlite>>,
+//     telegram_user_id: i64,
+// ) -> anyhow::Result<Vec<ClassDeductionHistory>> {
+//     let user_id = match get_user_by_telegram_id(db.clone(), telegram_user_id).await? {
+//         Some(u) => u.user_id,
+//         None => {
+//             bail!(UserNotFoundError);
+//         }
+//     };
+
+//     let histories: Vec<ClassDeductionHistory> = sqlx::query_as::<_, ClassDeductionHistory>(
+//         "select class_id, name, quantity, user_id
+//          from class_deduction_history
+//          where class_id = ?",
+//     )
+//     .bind(class_id)
+//     .fetch_all(db.as_ref())
+//     .await?;
+
+//     Ok(histories)
+// }
+
 pub async fn get_class_by_id(
     db: Arc<Pool<Sqlite>>,
     class_id: i64,
@@ -132,12 +155,23 @@ pub async fn charge_class(
     Ok(updated_class)
 }
 
-pub async fn add_class_deduction_history(db: Arc<Pool<Sqlite>>, class_id: i64) -> anyhow::Result<i64> {
+pub async fn add_class_deduction_history(
+    db: Arc<Pool<Sqlite>>,
+    class_id: i64,
+    telegram_user_id: i64,
+) -> anyhow::Result<i64> {
+    let user_id = match get_user_by_telegram_id(db.clone(), telegram_user_id).await? {
+        Some(u) => u.user_id,
+        None => {
+            bail!(UserNotFoundError);
+        }
+    };
     let result = sqlx::query(
-        "insert into class_deduction_history (class_id)
-         values (?)",
+        "insert into class_deduction_history (class_id, user_id)
+         values (?, ?)",
     )
     .bind(class_id)
+    .bind(user_id)
     .execute(db.as_ref())
     .await?;
 

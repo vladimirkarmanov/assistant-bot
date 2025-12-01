@@ -249,12 +249,12 @@ async fn charge_class_callback_handler(
         && let Some((_, id)) = data.split_once(':')
     {
         let class_id: i64 = id.parse()?;
+        let telegram_user_id: i64 = q.from.id.0.try_into().unwrap();
         bot.answer_callback_query(q.id.clone()).await?;
 
-        let output = match charge_class(db.clone(), class_id, q.from.id.0.try_into().unwrap()).await
-        {
+        let output = match charge_class(db.clone(), class_id, telegram_user_id).await {
             Ok(class) => {
-                add_class_deduction_history(db.clone(), class_id).await?;
+                add_class_deduction_history(db.clone(), class_id, telegram_user_id).await?;
                 format!(
                     "✅ Занятие {name} успешно списано! Остаток: {quantity}",
                     name = class.name,
