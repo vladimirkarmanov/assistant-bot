@@ -36,6 +36,9 @@ pub async fn idle_message_handler(
             Some(MenuAction::ListClasses) => {
                 list_classes_handler(bot, msg, db).await?;
             }
+            Some(MenuAction::ClassesDeductionHistory) => {
+                list_classes_deduction_history_handler(bot, msg, db).await?;
+            }
             Some(MenuAction::UpdateQuantity) => {
                 update_quantity_handler(bot, msg, db).await?;
             }
@@ -65,7 +68,10 @@ pub async fn idle_callback_handler(
             charge_class_callback_handler(bot.clone(), &q, db).await?;
         }
         Some(("update_quantity", _)) => {
-            receive_class_id_handler(bot.clone(), &q, &dialogue).await?;
+            update_class_quantity_callback_handler(bot.clone(), &q, &dialogue).await?;
+        }
+        Some(("class_deduction_history", _)) => {
+            list_classes_deduction_history_callback_handler(bot.clone(), &q, db).await?;
         }
         _ => {}
     }
@@ -163,6 +169,9 @@ async fn classes_menu_handler(
         },
         MainMenuButton {
             text: MenuAction::ListClasses.label().to_string(),
+        },
+        MainMenuButton {
+            text: MenuAction::ClassesDeductionHistory.label().to_string(),
         },
         MainMenuButton {
             text: MenuAction::MainMenu.label().to_string(),
@@ -288,7 +297,7 @@ async fn update_quantity_handler(
     Ok(())
 }
 
-async fn receive_class_id_handler(
+async fn update_class_quantity_callback_handler(
     bot: Bot,
     q: &CallbackQuery,
     dialogue: &Dialogue<State, InMemStorage<State>>,
@@ -308,5 +317,59 @@ async fn receive_class_id_handler(
         bot.send_message(q.from.id, "Ошибка").await?;
     }
 
+    Ok(())
+}
+
+async fn list_classes_deduction_history_handler(
+    bot: Bot,
+    msg: Message,
+    db: Arc<Pool<Sqlite>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
+    if classes.is_empty() {
+        bot.send_message(msg.chat.id, "У вас нет добавленных занятий")
+            .parse_mode(ParseMode::Html)
+            .await?;
+        return Ok(());
+    }
+
+    let keyboard =
+        keyboards::make_class_list_inline_keyboard(classes, 2, "class_deduction_history:");
+    let output = "Выберите занятие для просмотра истории списаний";
+    bot.send_message(msg.chat.id, output)
+        .reply_markup(keyboard)
+        .parse_mode(ParseMode::Html)
+        .await?;
+    Ok(())
+}
+
+async fn list_classes_deduction_history_callback_handler(
+    bot: Bot,
+    q: &CallbackQuery,
+    db: Arc<Pool<Sqlite>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    bot.answer_callback_query(q.id.clone()).await?;
+
+    if let Some(ref data) = q.data
+        && let Some((_, id)) = data.split_once(':')
+    {
+        let class_id: i64 = id.parse()?;
+        let telegram_user_id: i64 = q.from.id.0.try_into().unwrap();
+
+        let histories =
+            get_class_deduction_histories(db.clone(), class_id, telegram_user_id).await?;
+        if histories.is_empty() {
+            bot.send_message(q.from.id, "История списаний пуста")
+                .parse_mode(ParseMode::Html)
+                .await?;
+            return Ok(());
+        }
+
+        let formatted_classes: Vec<String> = histories.iter().map(|s| s.to_string()).collect();
+        let output = formatted_classes.join("\n");
+        bot.send_message(q.from.id, output).await?;
+    } else {
+        bot.send_message(q.from.id, "Ошибка").await?;
+    }
     Ok(())
 }

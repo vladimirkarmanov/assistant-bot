@@ -20,6 +20,7 @@ pub enum MenuAction {
     ChargeClass,
     ClassSettings,
     ListClasses,
+    ClassesDeductionHistory,
     UpdateQuantity,
     MainMenu,
 }
@@ -32,6 +33,7 @@ impl MenuAction {
             MenuAction::ChargeClass => "Списать занятие",
             MenuAction::ClassSettings => "Настройка занятий",
             MenuAction::ListClasses => "Список занятий",
+            MenuAction::ClassesDeductionHistory => "История списаний",
             MenuAction::UpdateQuantity => "Обновить количество",
             MenuAction::MainMenu => "Главное меню",
         }
@@ -44,6 +46,7 @@ impl MenuAction {
             "Списать занятие" => Some(MenuAction::ChargeClass),
             "Настройка занятий" => Some(MenuAction::ClassSettings),
             "Список занятий" => Some(MenuAction::ListClasses),
+            "История списаний" => Some(MenuAction::ClassesDeductionHistory),
             "Обновить количество" => Some(MenuAction::UpdateQuantity),
             "Главное меню" => Some(MenuAction::MainMenu),
             _ => None,

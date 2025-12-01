@@ -18,11 +18,18 @@ pub struct ClassDeductionHistory {
     pub created_at: String,
     pub class_deduction_history_id: i64,
     pub class_id: i64,
+    pub user_id: i64,
 }
 
 impl fmt::Display for Class {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} ({})", self.name, self.quantity)
+    }
+}
+
+impl fmt::Display for ClassDeductionHistory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.created_at)
     }
 }
 
@@ -76,28 +83,31 @@ pub async fn get_classes_by_user_id(
     Ok(classes)
 }
 
-// pub async fn get_classes_deduction_history(
-//     db: Arc<Pool<Sqlite>>,
-//     telegram_user_id: i64,
-// ) -> anyhow::Result<Vec<ClassDeductionHistory>> {
-//     let user_id = match get_user_by_telegram_id(db.clone(), telegram_user_id).await? {
-//         Some(u) => u.user_id,
-//         None => {
-//             bail!(UserNotFoundError);
-//         }
-//     };
+pub async fn get_class_deduction_histories(
+    db: Arc<Pool<Sqlite>>,
+    class_id: i64,
+    telegram_user_id: i64,
+) -> anyhow::Result<Vec<ClassDeductionHistory>> {
+    let user_id = match get_user_by_telegram_id(db.clone(), telegram_user_id).await? {
+        Some(u) => u.user_id,
+        None => {
+            bail!(UserNotFoundError);
+        }
+    };
 
-//     let histories: Vec<ClassDeductionHistory> = sqlx::query_as::<_, ClassDeductionHistory>(
-//         "select class_id, name, quantity, user_id
-//          from class_deduction_history
-//          where class_id = ?",
-//     )
-//     .bind(class_id)
-//     .fetch_all(db.as_ref())
-//     .await?;
+    let histories: Vec<ClassDeductionHistory> = sqlx::query_as::<_, ClassDeductionHistory>(
+        "select class_deduction_history_id, class_id, user_id, created_at
+         from class_deduction_history
+         where user_id = ?
+         and class_id = ?",
+    )
+    .bind(user_id)
+    .bind(class_id)
+    .fetch_all(db.as_ref())
+    .await?;
 
-//     Ok(histories)
-// }
+    Ok(histories)
+}
 
 pub async fn get_class_by_id(
     db: Arc<Pool<Sqlite>>,
