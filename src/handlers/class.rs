@@ -171,6 +171,13 @@ pub async fn list_classes_handler(
     db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
+    if classes.is_empty() {
+        bot.send_message(msg.chat.id, "У вас нет добавленных занятий")
+            .parse_mode(ParseMode::Html)
+            .await?;
+        return Ok(());
+    }
+
     let formatted_classes: Vec<String> = classes.iter().map(|s| s.to_string()).collect();
     let output = formatted_classes.join("\n");
     bot.send_message(msg.chat.id, output)
@@ -185,6 +192,13 @@ pub async fn list_classes_for_charging_handler(
     db: Arc<Pool<Sqlite>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let classes = get_classes_by_user_id(db.clone(), msg.chat.id.0).await?;
+    if classes.is_empty() {
+        bot.send_message(msg.chat.id, "У вас нет занятий для списания")
+            .parse_mode(ParseMode::Html)
+            .await?;
+        return Ok(());
+    }
+
     let keyboard = keyboards::make_class_list_inline_keyboard(classes, 2, "charge_class:");
     let output = "Выберите занятие для списания";
     bot.send_message(msg.chat.id, output)
@@ -208,6 +222,7 @@ pub async fn charge_class_callback_handler(
         let output = match charge_class(db.clone(), class_id, q.from.id.0.try_into().unwrap()).await
         {
             Ok(class) => {
+                add_class_deduction_history(db.clone(), class_id).await?;
                 format!(
                     "✅ Занятие {name} успешно списано! Остаток: {quantity}",
                     name = class.name,

@@ -13,6 +13,13 @@ pub struct Class {
     pub user_id: i64,
 }
 
+#[derive(FromRow)]
+pub struct ClassDeductionHistory {
+    pub class_deduction_history_id: i64,
+    pub class_id: i64,
+    pub created_at: String,
+}
+
 impl fmt::Display for Class {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} ({})", self.name, self.quantity)
@@ -123,6 +130,19 @@ pub async fn charge_class(
     .await?;
 
     Ok(updated_class)
+}
+
+pub async fn add_class_deduction_history(db: Arc<Pool<Sqlite>>, class_id: i64) -> anyhow::Result<i64> {
+    let result = sqlx::query(
+        "insert into class_deduction_history (class_id)
+         values (?)",
+    )
+    .bind(class_id)
+    .execute(db.as_ref())
+    .await?;
+
+    let class_id = result.last_insert_rowid();
+    Ok(class_id)
 }
 
 pub async fn update_class_quantity(
