@@ -1,48 +1,18 @@
 use std::sync::Arc;
 
-use sqlx::{Pool, Sqlite, prelude::FromRow};
+use sqlx::{Pool, Sqlite};
 
-#[derive(FromRow)]
-pub struct User {
-    pub username: Option<String>,
-    pub user_id: i64,
-    pub telegram_id: i64,
-}
-
-pub async fn does_user_exist(db: Arc<Pool<Sqlite>>, telegram_id: i64) -> anyhow::Result<bool> {
-    let user: Option<(i64,)> = sqlx::query_as("select user_id from user where telegram_id = ?")
-        .bind(telegram_id)
-        .fetch_optional(db.as_ref())
-        .await?;
-
-    Ok(user.is_some())
-}
-
-pub async fn get_user_by_telegram_id(
-    db: Arc<Pool<Sqlite>>,
-    telegram_id: i64,
-) -> anyhow::Result<Option<User>> {
-    let user: Option<User> = sqlx::query_as::<_, User>(
-        "select user_id, telegram_id, username from user where telegram_id = ?",
-    )
-    .bind(telegram_id)
-    .fetch_optional(db.as_ref())
-    .await?;
-
-    Ok(user)
-}
+use crate::uow::UnitOfWork;
 
 pub async fn add_user(
     db: Arc<Pool<Sqlite>>,
     telegram_id: i64,
     username: &str,
 ) -> anyhow::Result<()> {
-    if !does_user_exist(Arc::clone(&db), telegram_id).await? {
-        sqlx::query("insert into user (telegram_id, username) values (?, ?)")
-            .bind(telegram_id)
-            .bind(username)
-            .execute(db.as_ref())
-            .await?;
+    let mut uow = UnitOfWork::new(db.as_ref()).await?;
+    if !uow.user_repo().exists(telegram_id).await? {
+        uow.user_repo().create(telegram_id, username).await?;
+        uow.commit().await?;
     }
     Ok(())
 }

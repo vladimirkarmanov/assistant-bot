@@ -1,0 +1,51 @@
+use sqlx::{Sqlite, Transaction, prelude::FromRow};
+
+#[derive(FromRow)]
+pub struct User {
+    pub username: Option<String>,
+    pub user_id: i64,
+    pub telegram_id: i64,
+}
+
+pub struct UserRepository<'a, 'c> {
+    tx: &'a mut Transaction<'c, Sqlite>,
+}
+
+impl<'a, 'c> UserRepository<'a, 'c> {
+    pub fn new(tx: &'a mut Transaction<'c, Sqlite>) -> Self {
+        Self { tx }
+    }
+
+    pub async fn exists(&mut self, telegram_id: i64) -> anyhow::Result<bool> {
+        let user: Option<(i64,)> = sqlx::query_as("select user_id from user where telegram_id = ?")
+            .bind(telegram_id)
+            .fetch_optional(self.tx.as_mut())
+            .await?;
+        Ok(user.is_some())
+    }
+
+    pub async fn create(&mut self, telegram_id: i64, username: &str) -> anyhow::Result<i64> {
+        let result = sqlx::query("insert into user (telegram_id, username) values (?, ?)")
+            .bind(telegram_id)
+            .bind(username)
+            .execute(self.tx.as_mut())
+            .await?;
+
+        let user_id = result.last_insert_rowid();
+        Ok(user_id)
+    }
+
+    pub async fn get_user_by_telegram_id(
+        &mut self,
+        telegram_id: i64,
+    ) -> anyhow::Result<Option<User>> {
+        let user: Option<User> = sqlx::query_as::<_, User>(
+            "select user_id, telegram_id, username from user where telegram_id = ?",
+        )
+        .bind(telegram_id)
+        .fetch_optional(self.tx.as_mut())
+        .await?;
+
+        Ok(user)
+    }
+}

@@ -1,6 +1,6 @@
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup};
 
-use crate::services::class::Class;
+use crate::repositories::class::Class;
 
 pub struct MainMenuButton {
     pub text: String,
