@@ -10,6 +10,7 @@ use crate::{
     keyboards::{self, MainMenuButton},
     services::class::*,
     state::State,
+    uow::UnitOfWork,
 };
 
 pub async fn idle_message_handler(
@@ -359,17 +360,24 @@ async fn list_classes_deduction_history_callback_handler(
         let histories =
             get_class_deduction_histories(db.clone(), class_id, telegram_user_id).await?;
         if histories.is_empty() {
-            bot.send_message(q.from.id, "История списаний пуста")
-                .parse_mode(ParseMode::Html)
-                .await?;
+            if let Some(message) = q.regular_message() {
+                bot.edit_message_text(message.chat.id, message.id, "История списаний пуста")
+                    .await?;
+            }
             return Ok(());
         }
 
-        let formatted_classes: Vec<String> = histories.iter().map(|s| s.to_string()).collect();
-        let output = formatted_classes.join("\n");
-        bot.send_message(q.from.id, output).await?;
+        let formatted_histories: Vec<String> = histories.iter().map(|s| s.to_string()).collect();
+        let output = formatted_histories.join("\n");
+        if let Some(message) = q.regular_message() {
+            bot.edit_message_text(message.chat.id, message.id, output)
+                .await?;
+        }
     } else {
-        bot.send_message(q.from.id, "Ошибка").await?;
+        if let Some(message) = q.regular_message() {
+            bot.edit_message_text(message.chat.id, message.id, "Произошла ошибка")
+                .await?;
+        }
     }
     Ok(())
 }
