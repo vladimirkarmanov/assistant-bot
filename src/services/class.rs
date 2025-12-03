@@ -10,12 +10,12 @@ use crate::{
 };
 
 pub async fn add_class(
-    db: Arc<Pool<Sqlite>>,
+    db_pool: Arc<Pool<Sqlite>>,
     name: String,
     quantity: u8,
     telegram_user_id: i64,
 ) -> anyhow::Result<i64> {
-    let mut uow = UnitOfWork::new(db.as_ref()).await?;
+    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
         .get_user_by_telegram_id(telegram_user_id)
@@ -37,10 +37,10 @@ pub async fn add_class(
 }
 
 pub async fn get_classes_by_user_id(
-    db: Arc<Pool<Sqlite>>,
+    db_pool: Arc<Pool<Sqlite>>,
     telegram_user_id: i64,
 ) -> anyhow::Result<Vec<Class>> {
-    let mut uow = UnitOfWork::new(db.as_ref()).await?;
+    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
         .get_user_by_telegram_id(telegram_user_id)
@@ -57,11 +57,11 @@ pub async fn get_classes_by_user_id(
 }
 
 pub async fn get_class_deduction_histories(
-    db: Arc<Pool<Sqlite>>,
+    db_pool: Arc<Pool<Sqlite>>,
     class_id: i64,
     telegram_user_id: i64,
 ) -> anyhow::Result<Vec<ClassDeductionHistory>> {
-    let mut uow = UnitOfWork::new(db.as_ref()).await?;
+    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
         .get_user_by_telegram_id(telegram_user_id)
@@ -81,11 +81,11 @@ pub async fn get_class_deduction_histories(
 }
 
 pub async fn charge_class(
-    db: Arc<Pool<Sqlite>>,
+    db_pool: Arc<Pool<Sqlite>>,
     class_id: i64,
     telegram_user_id: i64,
 ) -> anyhow::Result<Class> {
-    let mut uow = UnitOfWork::new(db.as_ref()).await?;
+    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
         .get_user_by_telegram_id(telegram_user_id)
@@ -123,11 +123,11 @@ pub async fn charge_class(
 }
 
 pub async fn add_class_deduction_history(
-    db: Arc<Pool<Sqlite>>,
+    db_pool: Arc<Pool<Sqlite>>,
     class_id: i64,
     telegram_user_id: i64,
 ) -> anyhow::Result<()> {
-    let mut uow = UnitOfWork::new(db.as_ref()).await?;
+    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
         .get_user_by_telegram_id(telegram_user_id)
@@ -148,12 +148,12 @@ pub async fn add_class_deduction_history(
 }
 
 pub async fn update_class_quantity(
-    db: Arc<Pool<Sqlite>>,
+    db_pool: Arc<Pool<Sqlite>>,
     class_id: i64,
     telegram_user_id: i64,
     quantity: u8,
 ) -> anyhow::Result<Class> {
-    let mut uow = UnitOfWork::new(db.as_ref()).await?;
+    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
         .get_user_by_telegram_id(telegram_user_id)

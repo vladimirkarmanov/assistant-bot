@@ -24,7 +24,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut sqlite_opts = sqlx::sqlite::SqliteConnectOptions::new();
     sqlite_opts = sqlite_opts.filename(&config.database.path);
 
-    let db = SqlitePool::connect_with(sqlite_opts).await?;
+    let db_pool = SqlitePool::connect_with(sqlite_opts).await?;
 
     let bot = Bot::new(&config.bot_token);
     bot.set_my_commands(Command::bot_commands())
@@ -62,7 +62,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![
             InMemStorage::<State>::new(),
-            Arc::new(db.clone())
+            Arc::new(db_pool.clone())
         ])
         .enable_ctrlc_handler()
         .build()

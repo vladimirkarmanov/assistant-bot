@@ -18,11 +18,11 @@ use teloxide::{Bot, types::Message};
 pub async fn start_handler(
     bot: Bot,
     msg: Message,
-    db: Arc<Pool<Sqlite>>,
+    db_pool: Arc<Pool<Sqlite>>,
 ) -> anyhow::Result<(), Box<dyn Error + Send + Sync>> {
     bot.send_message(msg.chat.id, "Я бот помощник. Посмотри что я умею: /help")
         .await?;
-    add_user(db.clone(), msg.chat.id.0, msg.chat.username().unwrap_or("")).await?;
+    add_user(db_pool.clone(), msg.chat.id.0, msg.chat.username().unwrap_or("")).await?;
     Ok(())
 }
 
