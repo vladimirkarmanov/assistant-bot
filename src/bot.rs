@@ -15,6 +15,12 @@ use crate::{
     state::State,
 };
 
+#[derive(Clone)]
+pub struct DI {
+    pub config: Config,
+    pub db_pool: Arc<SqlitePool>,
+}
+
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     pretty_env_logger::init();
     log::info!("Starting bot...");
@@ -30,6 +36,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     bot.set_my_commands(Command::bot_commands())
         .await
         .expect("Failed to set bot commands");
+
+    let di = Arc::new(DI {
+        config: config,
+        db_pool: Arc::new(db_pool),
+    });
 
     let handler = dptree::entry()
         .branch(
@@ -60,10 +71,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         );
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![
-            InMemStorage::<State>::new(),
-            Arc::new(db_pool.clone())
-        ])
+        .dependencies(dptree::deps![InMemStorage::<State>::new(), di])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

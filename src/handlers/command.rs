@@ -1,4 +1,3 @@
-use sqlx::{Pool, Sqlite};
 use std::{error::Error, sync::Arc};
 use teloxide::{
     dispatching::dialogue::{InMemStorage, Storage},
@@ -8,6 +7,7 @@ use teloxide::{
 };
 
 use crate::{
+    bot::DI,
     commands::{Command, MenuAction},
     keyboards::{self, MainMenuButton},
     services::user::*,
@@ -18,11 +18,16 @@ use teloxide::{Bot, types::Message};
 pub async fn start_handler(
     bot: Bot,
     msg: Message,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> anyhow::Result<(), Box<dyn Error + Send + Sync>> {
     bot.send_message(msg.chat.id, "Я бот помощник. Посмотри что я умею: /help")
         .await?;
-    add_user(db_pool.clone(), msg.chat.id.0, msg.chat.username().unwrap_or("")).await?;
+    add_user(
+        di.db_pool.clone(),
+        msg.chat.id.0,
+        msg.chat.username().unwrap_or(""),
+    )
+    .await?;
     Ok(())
 }
 

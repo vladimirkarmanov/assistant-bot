@@ -1,10 +1,10 @@
-use sqlx::{Pool, Sqlite};
 use std::{error::Error, sync::Arc};
 use teloxide::{
     dispatching::dialogue::InMemStorage, payloads::SendMessageSetters, prelude::*, types::ParseMode,
 };
 
 use crate::{
+    bot::DI,
     commands::MenuAction,
     handlers::command::main_menu_handler,
     keyboards::{self, MainMenuButton},
@@ -16,7 +16,7 @@ pub async fn idle_message_handler(
     bot: Bot,
     dialogue: Dialogue<State, InMemStorage<State>>,
     msg: Message,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if let Some(text) = msg.text() {
         match MenuAction::parse(text) {
@@ -28,19 +28,19 @@ pub async fn idle_message_handler(
                 dialogue.update(State::AddingClassReceiveName).await?;
             }
             Some(MenuAction::ChargeClass) => {
-                list_classes_for_charging_handler(bot, msg, db_pool).await?;
+                list_classes_for_charging_handler(bot, msg, di).await?;
             }
             Some(MenuAction::ClassSettings) => {
                 class_settings_handler(bot, msg).await?;
             }
             Some(MenuAction::ListClasses) => {
-                list_classes_handler(bot, msg, db_pool).await?;
+                list_classes_handler(bot, msg, di).await?;
             }
             Some(MenuAction::ClassesDeductionHistory) => {
-                list_classes_deduction_history_handler(bot, msg, db_pool).await?;
+                list_classes_deduction_history_handler(bot, msg, di).await?;
             }
             Some(MenuAction::UpdateQuantity) => {
-                update_quantity_handler(bot, msg, db_pool).await?;
+                update_quantity_handler(bot, msg, di).await?;
             }
             Some(MenuAction::MainMenu) => {
                 main_menu_handler(bot, msg).await?;
@@ -57,7 +57,7 @@ pub async fn idle_callback_handler(
     bot: Bot,
     dialogue: Dialogue<State, InMemStorage<State>>,
     q: CallbackQuery,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let Some(data) = q.data.as_deref() else {
         return Ok(());
@@ -65,13 +65,13 @@ pub async fn idle_callback_handler(
 
     match data.split_once(':') {
         Some(("charge_class", _)) => {
-            charge_class_callback_handler(bot.clone(), &q, db_pool).await?;
+            charge_class_callback_handler(bot.clone(), &q, di).await?;
         }
         Some(("update_quantity", _)) => {
             update_class_quantity_callback_handler(bot.clone(), &q, &dialogue).await?;
         }
         Some(("class_deduction_history", _)) => {
-            list_classes_deduction_history_callback_handler(bot.clone(), &q, db_pool).await?;
+            list_classes_deduction_history_callback_handler(bot.clone(), &q, di).await?;
         }
         _ => {}
     }
@@ -105,11 +105,11 @@ pub async fn receive_quantity(
     dialogue: Dialogue<State, InMemStorage<State>>,
     name: String,
     msg: Message,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match msg.text().map(|text| text.parse::<u8>()) {
         Some(Ok(quantity)) => {
-            let class = match add_class(db_pool, name, quantity, msg.chat.id.0).await {
+            let class = match add_class(di.db_pool.clone(), name, quantity, msg.chat.id.0).await {
                 Ok(_) => "✅ Занятие успешно добавлено!".to_string(),
                 Err(err) => err.to_string(),
             };
@@ -128,13 +128,13 @@ pub async fn receive_quantity_handler(
     bot: Bot,
     msg: Message,
     dialogue: Dialogue<State, InMemStorage<State>>,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
     class_id: i64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match msg.text().map(|text| text.parse::<u8>()) {
         Some(Ok(quantity)) => {
             let output =
-                match update_class_quantity(db_pool.clone(), class_id, msg.chat.id.0, quantity)
+                match update_class_quantity(di.db_pool.clone(), class_id, msg.chat.id.0, quantity)
                     .await
                 {
                     Ok(class) => {
@@ -211,9 +211,9 @@ async fn class_settings_handler(
 async fn list_classes_handler(
     bot: Bot,
     msg: Message,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let classes = get_classes_by_user_id(db_pool.clone(), msg.chat.id.0).await?;
+    let classes = get_classes_by_user_id(di.db_pool.clone(), msg.chat.id.0).await?;
     if classes.is_empty() {
         bot.send_message(msg.chat.id, "У вас нет добавленных занятий")
             .parse_mode(ParseMode::Html)
@@ -232,9 +232,9 @@ async fn list_classes_handler(
 async fn list_classes_for_charging_handler(
     bot: Bot,
     msg: Message,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let classes = get_classes_by_user_id(db_pool.clone(), msg.chat.id.0).await?;
+    let classes = get_classes_by_user_id(di.db_pool.clone(), msg.chat.id.0).await?;
     if classes.is_empty() {
         bot.send_message(msg.chat.id, "У вас нет занятий для списания")
             .parse_mode(ParseMode::Html)
@@ -254,7 +254,7 @@ async fn list_classes_for_charging_handler(
 async fn charge_class_callback_handler(
     bot: Bot,
     q: &CallbackQuery,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     if let Some(ref data) = q.data
         && let Some((_, id)) = data.split_once(':')
@@ -263,9 +263,9 @@ async fn charge_class_callback_handler(
         let telegram_user_id: i64 = q.from.id.0.try_into().unwrap();
         bot.answer_callback_query(q.id.clone()).await?;
 
-        let output = match charge_class(db_pool.clone(), class_id, telegram_user_id).await {
+        let output = match charge_class(di.db_pool.clone(), class_id, telegram_user_id).await {
             Ok(class) => {
-                add_class_deduction_history(db_pool.clone(), class_id, telegram_user_id).await?;
+                add_class_deduction_history(di.db_pool.clone(), class_id, telegram_user_id).await?;
                 format!(
                     "✅ Занятие {name} успешно списано! Остаток: {quantity}",
                     name = class.name,
@@ -287,9 +287,9 @@ async fn charge_class_callback_handler(
 async fn update_quantity_handler(
     bot: Bot,
     msg: Message,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let classes = get_classes_by_user_id(db_pool.clone(), msg.chat.id.0).await?;
+    let classes = get_classes_by_user_id(di.db_pool.clone(), msg.chat.id.0).await?;
     let keyboard = keyboards::make_class_list_inline_keyboard(classes, 2, "update_quantity:");
     let output = "Выберите занятие для обновления";
     bot.send_message(msg.chat.id, output)
@@ -325,9 +325,9 @@ async fn update_class_quantity_callback_handler(
 async fn list_classes_deduction_history_handler(
     bot: Bot,
     msg: Message,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let classes = get_classes_by_user_id(db_pool.clone(), msg.chat.id.0).await?;
+    let classes = get_classes_by_user_id(di.db_pool.clone(), msg.chat.id.0).await?;
     if classes.is_empty() {
         bot.send_message(msg.chat.id, "У вас нет добавленных занятий")
             .parse_mode(ParseMode::Html)
@@ -348,7 +348,7 @@ async fn list_classes_deduction_history_handler(
 async fn list_classes_deduction_history_callback_handler(
     bot: Bot,
     q: &CallbackQuery,
-    db_pool: Arc<Pool<Sqlite>>,
+    di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     bot.answer_callback_query(q.id.clone()).await?;
 
@@ -359,7 +359,7 @@ async fn list_classes_deduction_history_callback_handler(
         let telegram_user_id: i64 = q.from.id.0.try_into().unwrap();
 
         let histories =
-            get_class_deduction_histories(db_pool.clone(), class_id, telegram_user_id).await?;
+            get_class_deduction_histories(di.db_pool.clone(), class_id, telegram_user_id).await?;
         if histories.is_empty() {
             if let Some(message) = q.regular_message() {
                 bot.edit_message_text(message.chat.id, message.id, "История списаний пуста")
