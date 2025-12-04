@@ -27,10 +27,26 @@ pub async fn add_class(
         }
     };
 
-    let class_id = uow
+    let class_id = match uow
         .class_repo()
         .create(name, quantity as i64, user_id)
-        .await?;
+        .await
+    {
+        Ok(class_id) => class_id,
+        Err(err) => {
+            if let Some(db_err) = err.as_database_error() {
+                match db_err.code().as_deref() {
+                    Some("2067") | Some("1555") => {
+                        bail!(DuplicateClassNameError);
+                    }
+                    _ => {
+                        bail!(SomethingWentWrongError);
+                    }
+                }
+            }
+            bail!(SomethingWentWrongError);
+        }
+    };
 
     uow.commit().await?;
     Ok(class_id)

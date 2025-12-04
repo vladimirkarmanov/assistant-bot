@@ -30,7 +30,7 @@ impl<'a, 'c> ClassRepository<'a, 'c> {
         name: String,
         quantity: i64,
         user_id: i64,
-    ) -> anyhow::Result<i64> {
+    ) -> anyhow::Result<i64, sqlx::Error> {
         let result = sqlx::query(
             "insert into class (name, quantity, user_id)
              values (?, ?, ?)",
