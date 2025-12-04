@@ -314,7 +314,10 @@ async fn update_class_quantity_callback_handler(
             .update(State::UpdatingClassReceiveQuantity { class_id })
             .await?;
 
-        bot.send_message(q.from.id, "Введите количество:").await?;
+        if let Some(message) = q.regular_message() {
+            bot.edit_message_text(message.chat.id, message.id, "Введите количество:")
+                .await?;
+        }
     } else {
         bot.send_message(q.from.id, "Ошибка").await?;
     }
