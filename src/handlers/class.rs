@@ -354,6 +354,9 @@ async fn list_classes_deduction_history_callback_handler(
     di: Arc<DI>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     bot.answer_callback_query(q.id.clone()).await?;
+    let Some(message) = q.regular_message() else {
+        return Ok(());
+    };
 
     if let Some(ref data) = q.data
         && let Some((_, id)) = data.split_once(':')
@@ -364,24 +367,18 @@ async fn list_classes_deduction_history_callback_handler(
         let histories =
             get_class_deduction_histories(di.db_pool.clone(), class_id, telegram_user_id).await?;
         if histories.is_empty() {
-            if let Some(message) = q.regular_message() {
-                bot.edit_message_text(message.chat.id, message.id, "История списаний пуста")
-                    .await?;
-            }
+            bot.edit_message_text(message.chat.id, message.id, "История списаний пуста")
+                .await?;
             return Ok(());
         }
 
         let formatted_histories: Vec<String> = histories.iter().map(|s| s.to_string()).collect();
         let output = formatted_histories.join("\n");
-        if let Some(message) = q.regular_message() {
-            bot.edit_message_text(message.chat.id, message.id, output)
-                .await?;
-        }
+        bot.edit_message_text(message.chat.id, message.id, output)
+            .await?;
     } else {
-        if let Some(message) = q.regular_message() {
-            bot.edit_message_text(message.chat.id, message.id, "Произошла ошибка")
-                .await?;
-        }
+        bot.edit_message_text(message.chat.id, message.id, "Произошла ошибка")
+            .await?;
     }
     Ok(())
 }
