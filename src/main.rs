@@ -8,6 +8,7 @@ mod repositories;
 mod services;
 mod state;
 mod uow;
+mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

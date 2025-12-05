@@ -1,6 +1,9 @@
 use std::fmt;
 
+use chrono::{Datelike, NaiveDateTime};
 use sqlx::{Sqlite, Transaction, prelude::FromRow};
+
+use crate::utils::get_russian_weekday_name;
 
 #[derive(FromRow)]
 pub struct ClassDeductionHistory {
@@ -12,7 +15,14 @@ pub struct ClassDeductionHistory {
 
 impl fmt::Display for ClassDeductionHistory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.created_at)
+        let dt = NaiveDateTime::parse_from_str(&self.created_at, "%Y-%m-%d %H:%M:%S").unwrap();
+        let formatted_date = dt.format("%d.%m.%Y %H:%M").to_string();
+        write!(
+            f,
+            "{} ({})",
+            formatted_date,
+            get_russian_weekday_name(dt.weekday(), true)
+        )
     }
 }
 
