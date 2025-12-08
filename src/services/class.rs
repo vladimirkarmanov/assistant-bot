@@ -96,7 +96,7 @@ pub async fn get_class_deduction_histories(
     Ok(histories)
 }
 
-pub async fn charge_class(
+pub async fn deduct_class(
     db_pool: Arc<Pool<Sqlite>>,
     class_id: i64,
     telegram_user_id: i64,
@@ -125,7 +125,7 @@ pub async fn charge_class(
     };
 
     if class.quantity == 0 {
-        bail!(NotEnoughClassQuantityToChargeError(class.quantity));
+        bail!(NotEnoughClassQuantityToDeductError(class.quantity));
     }
 
     let new_quantity = class.quantity - 1;

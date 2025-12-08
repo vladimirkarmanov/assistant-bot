@@ -12,7 +12,7 @@ pub struct ClassNotFoundError;
 
 #[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
 #[error("Не удалось списать занятие. Количество доступных занятий {0}")]
-pub struct NotEnoughClassQuantityToChargeError(pub u8);
+pub struct NotEnoughClassQuantityToDeductError(pub u8);
 
 #[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
 #[error("Занятие с таким именем же существует. Пожалуйста, выберите другое имя.")]

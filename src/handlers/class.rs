@@ -27,8 +27,8 @@ pub async fn idle_message_handler(
                 bot.send_message(msg.chat.id, "Введите назввание:").await?;
                 dialogue.update(State::AddingClassReceiveName).await?;
             }
-            Some(MenuAction::ChargeClass) => {
-                list_classes_for_charging_handler(bot, msg, di).await?;
+            Some(MenuAction::DeductClass) => {
+                list_classes_for_deduction_handler(bot, msg, di).await?;
             }
             Some(MenuAction::ClassSettings) => {
                 class_settings_handler(bot, msg).await?;
@@ -64,8 +64,8 @@ pub async fn idle_callback_handler(
     };
 
     match data.split_once(':') {
-        Some(("charge_class", _)) => {
-            charge_class_callback_handler(bot.clone(), &q, di).await?;
+        Some(("deduct_class", _)) => {
+            deduct_class_callback_handler(bot.clone(), &q, di).await?;
         }
         Some(("update_quantity", _)) => {
             update_class_quantity_callback_handler(bot.clone(), &q, &dialogue).await?;
@@ -164,7 +164,7 @@ async fn classes_menu_handler(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let buttons = vec![
         MainMenuButton {
-            text: MenuAction::ChargeClass.label().to_string(),
+            text: MenuAction::DeductClass.label().to_string(),
         },
         MainMenuButton {
             text: MenuAction::ClassSettings.label().to_string(),
@@ -229,7 +229,7 @@ async fn list_classes_handler(
     Ok(())
 }
 
-async fn list_classes_for_charging_handler(
+async fn list_classes_for_deduction_handler(
     bot: Bot,
     msg: Message,
     di: Arc<DI>,
@@ -242,7 +242,7 @@ async fn list_classes_for_charging_handler(
         return Ok(());
     }
 
-    let keyboard = keyboards::make_class_list_inline_keyboard(classes, 2, "charge_class:");
+    let keyboard = keyboards::make_class_list_inline_keyboard(classes, 2, "deduct_class:");
     let output = "Выберите занятие для списания";
     bot.send_message(msg.chat.id, output)
         .reply_markup(keyboard)
@@ -251,7 +251,7 @@ async fn list_classes_for_charging_handler(
     Ok(())
 }
 
-async fn charge_class_callback_handler(
+async fn deduct_class_callback_handler(
     bot: Bot,
     q: &CallbackQuery,
     di: Arc<DI>,
@@ -263,7 +263,7 @@ async fn charge_class_callback_handler(
         let telegram_user_id: i64 = q.from.id.0.try_into().unwrap();
         bot.answer_callback_query(q.id.clone()).await?;
 
-        let output = match charge_class(di.db_pool.clone(), class_id, telegram_user_id).await {
+        let output = match deduct_class(di.db_pool.clone(), class_id, telegram_user_id).await {
             Ok(class) => {
                 add_class_deduction_history(di.db_pool.clone(), class_id, telegram_user_id).await?;
                 format!(

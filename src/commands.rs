@@ -17,7 +17,7 @@ pub enum Command {
 pub enum MenuAction {
     Classes,
     AddClass,
-    ChargeClass,
+    DeductClass,
     ClassSettings,
     ListClasses,
     ClassesDeductionHistory,
@@ -30,7 +30,7 @@ impl MenuAction {
         match self {
             MenuAction::Classes => "Занятия",
             MenuAction::AddClass => "Добавить занятие",
-            MenuAction::ChargeClass => "Списать занятие",
+            MenuAction::DeductClass => "Списать занятие",
             MenuAction::ClassSettings => "Настройка занятий",
             MenuAction::ListClasses => "Список занятий",
             MenuAction::ClassesDeductionHistory => "История списаний",
@@ -43,7 +43,7 @@ impl MenuAction {
         match text {
             "Занятия" => Some(MenuAction::Classes),
             "Добавить занятие" => Some(MenuAction::AddClass),
-            "Списать занятие" => Some(MenuAction::ChargeClass),
+            "Списать занятие" => Some(MenuAction::DeductClass),
             "Настройка занятий" => Some(MenuAction::ClassSettings),
             "Список занятий" => Some(MenuAction::ListClasses),
             "История списаний" => Some(MenuAction::ClassesDeductionHistory),
