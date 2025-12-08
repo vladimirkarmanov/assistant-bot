@@ -11,7 +11,12 @@ use teloxide::{
 use crate::{
     commands::Command,
     config::Config,
-    handlers::{class::*, command::*},
+    handlers::{
+        class::*,
+        command::*,
+        common::{idle_callback_handler, idle_message_handler},
+        daily_practice::receive_minutes,
+    },
     state::State,
 };
 
@@ -61,7 +66,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .branch(
                     case![State::UpdatingClassReceiveQuantity { class_id }]
                         .endpoint(receive_quantity_handler),
-                ),
+                )
+                .branch(case![State::AddingDailyPracticeReceiveMinutes].endpoint(receive_minutes)),
         )
         .branch(
             Update::filter_callback_query()
