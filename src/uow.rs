@@ -1,6 +1,6 @@
 use crate::repositories::{
     class::ClassRepository, class_deduction_history::ClassDeductionHistoryRepository,
-    user::UserRepository,
+    daily_practice_log::DailyPracticeLogRepository, user::UserRepository,
 };
 use sqlx::{Pool, Sqlite, Transaction};
 
@@ -30,5 +30,9 @@ impl<'c> UnitOfWork<'c> {
         &mut self,
     ) -> crate::repositories::class_deduction_history::ClassDeductionHistoryRepository<'_, 'c> {
         ClassDeductionHistoryRepository::new(&mut self.tx)
+    }
+
+    pub fn daily_practice_log_repo(&mut self) -> DailyPracticeLogRepository<'_, 'c> {
+        DailyPracticeLogRepository::new(&mut self.tx)
     }
 }

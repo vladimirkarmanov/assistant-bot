@@ -22,6 +22,8 @@ pub enum MenuAction {
     ListClasses,
     ClassesDeductionHistory,
     UpdateQuantity,
+    DailyPracticeLog,
+    AddDailyPracticeEntry,
     MainMenu,
 }
 
@@ -35,6 +37,8 @@ impl MenuAction {
             MenuAction::ListClasses => "Список занятий",
             MenuAction::ClassesDeductionHistory => "История списаний",
             MenuAction::UpdateQuantity => "Обновить количество",
+            MenuAction::DailyPracticeLog => "Дневник практик",
+            MenuAction::AddDailyPracticeEntry => "Добавить запись",
             MenuAction::MainMenu => "Главное меню",
         }
     }
@@ -48,6 +52,8 @@ impl MenuAction {
             "Список занятий" => Some(MenuAction::ListClasses),
             "История списаний" => Some(MenuAction::ClassesDeductionHistory),
             "Обновить количество" => Some(MenuAction::UpdateQuantity),
+            "Дневник практик" => Some(MenuAction::DailyPracticeLog),
+            "Добавить запись" => Some(MenuAction::AddDailyPracticeEntry),
             "Главное меню" => Some(MenuAction::MainMenu),
             _ => None,
         }

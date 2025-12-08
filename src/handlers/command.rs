@@ -38,9 +38,14 @@ pub async fn help_handler(bot: Bot, msg: Message) -> Result<(), Box<dyn Error + 
 }
 
 pub async fn main_menu_handler(bot: Bot, msg: Message) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let buttons = vec![MainMenuButton {
-        text: MenuAction::Classes.label().to_string(),
-    }];
+    let buttons = vec![
+        MainMenuButton {
+            text: MenuAction::Classes.label().to_string(),
+        },
+        MainMenuButton {
+            text: MenuAction::DailyPracticeLog.label().to_string(),
+        },
+    ];
     let keyboard = keyboards::make_main_menu_keyboard(buttons, 2);
     bot.send_message(msg.chat.id, "Переход в главное меню")
         .reply_markup(keyboard)

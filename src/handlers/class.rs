@@ -6,78 +6,10 @@ use teloxide::{
 use crate::{
     bot::DI,
     commands::MenuAction,
-    handlers::command::main_menu_handler,
     keyboards::{self, MainMenuButton},
     services::class::*,
     state::State,
 };
-
-pub async fn idle_message_handler(
-    bot: Bot,
-    dialogue: Dialogue<State, InMemStorage<State>>,
-    msg: Message,
-    di: Arc<DI>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    if let Some(text) = msg.text() {
-        match MenuAction::parse(text) {
-            Some(MenuAction::Classes) => {
-                classes_menu_handler(bot, msg).await?;
-            }
-            Some(MenuAction::AddClass) => {
-                bot.send_message(msg.chat.id, "Введите назввание:").await?;
-                dialogue.update(State::AddingClassReceiveName).await?;
-            }
-            Some(MenuAction::DeductClass) => {
-                list_classes_for_deduction_handler(bot, msg, di).await?;
-            }
-            Some(MenuAction::ClassSettings) => {
-                class_settings_handler(bot, msg).await?;
-            }
-            Some(MenuAction::ListClasses) => {
-                list_classes_handler(bot, msg, di).await?;
-            }
-            Some(MenuAction::ClassesDeductionHistory) => {
-                list_classes_deduction_history_handler(bot, msg, di).await?;
-            }
-            Some(MenuAction::UpdateQuantity) => {
-                update_quantity_handler(bot, msg, di).await?;
-            }
-            Some(MenuAction::MainMenu) => {
-                main_menu_handler(bot, msg).await?;
-            }
-            None => {
-                bot.send_message(msg.chat.id, "Команда не найдена!").await?;
-            }
-        }
-    }
-    Ok(())
-}
-
-pub async fn idle_callback_handler(
-    bot: Bot,
-    dialogue: Dialogue<State, InMemStorage<State>>,
-    q: CallbackQuery,
-    di: Arc<DI>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let Some(data) = q.data.as_deref() else {
-        return Ok(());
-    };
-
-    match data.split_once(':') {
-        Some(("deduct_class", _)) => {
-            deduct_class_callback_handler(bot.clone(), &q, di).await?;
-        }
-        Some(("update_quantity", _)) => {
-            update_class_quantity_callback_handler(bot.clone(), &q, &dialogue).await?;
-        }
-        Some(("class_deduction_history", _)) => {
-            list_classes_deduction_history_callback_handler(bot.clone(), &q, di).await?;
-        }
-        _ => {}
-    }
-
-    Ok(())
-}
 
 pub async fn receive_name(
     bot: Bot,
@@ -158,7 +90,7 @@ pub async fn receive_quantity_handler(
     Ok(())
 }
 
-async fn classes_menu_handler(
+pub async fn classes_menu_handler(
     bot: Bot,
     msg: Message,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -186,7 +118,7 @@ async fn classes_menu_handler(
     Ok(())
 }
 
-async fn class_settings_handler(
+pub async fn class_settings_handler(
     bot: Bot,
     msg: Message,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -208,7 +140,7 @@ async fn class_settings_handler(
     Ok(())
 }
 
-async fn list_classes_handler(
+pub async fn list_classes_handler(
     bot: Bot,
     msg: Message,
     di: Arc<DI>,
@@ -229,7 +161,7 @@ async fn list_classes_handler(
     Ok(())
 }
 
-async fn list_classes_for_deduction_handler(
+pub async fn list_classes_for_deduction_handler(
     bot: Bot,
     msg: Message,
     di: Arc<DI>,
@@ -251,7 +183,7 @@ async fn list_classes_for_deduction_handler(
     Ok(())
 }
 
-async fn deduct_class_callback_handler(
+pub async fn deduct_class_callback_handler(
     bot: Bot,
     q: &CallbackQuery,
     di: Arc<DI>,
@@ -284,7 +216,7 @@ async fn deduct_class_callback_handler(
     Ok(())
 }
 
-async fn update_quantity_handler(
+pub async fn update_quantity_handler(
     bot: Bot,
     msg: Message,
     di: Arc<DI>,
@@ -299,7 +231,7 @@ async fn update_quantity_handler(
     Ok(())
 }
 
-async fn update_class_quantity_callback_handler(
+pub async fn update_class_quantity_callback_handler(
     bot: Bot,
     q: &CallbackQuery,
     dialogue: &Dialogue<State, InMemStorage<State>>,
@@ -325,7 +257,7 @@ async fn update_class_quantity_callback_handler(
     Ok(())
 }
 
-async fn list_classes_deduction_history_handler(
+pub async fn list_classes_deduction_history_handler(
     bot: Bot,
     msg: Message,
     di: Arc<DI>,
@@ -348,7 +280,7 @@ async fn list_classes_deduction_history_handler(
     Ok(())
 }
 
-async fn list_classes_deduction_history_callback_handler(
+pub async fn list_classes_deduction_history_callback_handler(
     bot: Bot,
     q: &CallbackQuery,
     di: Arc<DI>,

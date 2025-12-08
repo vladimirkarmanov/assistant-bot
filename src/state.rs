@@ -13,4 +13,7 @@ pub enum State {
     UpdatingClassReceiveQuantity {
         class_id: i64,
     },
+
+    // Add daily practice states
+    AddingDailyPracticeReceiveMinutes,
 }
