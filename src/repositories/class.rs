@@ -36,7 +36,7 @@ impl<'a, 'c> ClassRepository<'a, 'c> {
              values (?, ?, ?)",
         )
         .bind(name)
-        .bind(quantity as i64)
+        .bind(quantity)
         .bind(user_id)
         .execute(self.tx.as_mut())
         .await?;

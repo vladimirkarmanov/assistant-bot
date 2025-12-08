@@ -15,7 +15,6 @@ use crate::{
     state::State,
 };
 
-#[derive(Clone)]
 pub struct DI {
     pub config: Config,
     pub db_pool: Arc<SqlitePool>,
@@ -38,7 +37,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .expect("Failed to set bot commands");
 
     let di = Arc::new(DI {
-        config: config,
+        config,
         db_pool: Arc::new(db_pool),
     });
 
