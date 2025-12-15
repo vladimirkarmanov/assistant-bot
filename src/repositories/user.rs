@@ -1,4 +1,6 @@
-use sqlx::{Sqlite, Transaction, prelude::FromRow};
+use std::ops::DerefMut;
+
+use sqlx::{SqliteConnection, prelude::FromRow};
 
 #[derive(FromRow)]
 pub struct User {
@@ -7,19 +9,19 @@ pub struct User {
     pub telegram_id: i64,
 }
 
-pub struct UserRepository<'a, 'c> {
-    tx: &'a mut Transaction<'c, Sqlite>,
+pub struct UserRepository<'a> {
+    conn: &'a mut SqliteConnection,
 }
 
-impl<'a, 'c> UserRepository<'a, 'c> {
-    pub fn new(tx: &'a mut Transaction<'c, Sqlite>) -> Self {
-        Self { tx }
+impl<'a> UserRepository<'a> {
+    pub fn new(conn: &'a mut SqliteConnection) -> Self {
+        Self { conn }
     }
 
     pub async fn exists(&mut self, telegram_id: i64) -> anyhow::Result<bool> {
         let user: Option<(i64,)> = sqlx::query_as("select user_id from user where telegram_id = ?")
             .bind(telegram_id)
-            .fetch_optional(self.tx.as_mut())
+            .fetch_optional(self.conn.deref_mut())
             .await?;
         Ok(user.is_some())
     }
@@ -28,7 +30,7 @@ impl<'a, 'c> UserRepository<'a, 'c> {
         let result = sqlx::query("insert into user (telegram_id, username) values (?, ?)")
             .bind(telegram_id)
             .bind(username)
-            .execute(self.tx.as_mut())
+            .execute(self.conn.deref_mut())
             .await?;
 
         let user_id = result.last_insert_rowid();
@@ -43,7 +45,7 @@ impl<'a, 'c> UserRepository<'a, 'c> {
             "select user_id, telegram_id, username from user where telegram_id = ?",
         )
         .bind(telegram_id)
-        .fetch_optional(self.tx.as_mut())
+        .fetch_optional(self.conn.deref_mut())
         .await?;
 
         Ok(user)

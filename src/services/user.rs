@@ -9,9 +9,9 @@ pub async fn add_user(
     telegram_id: i64,
     username: &str,
 ) -> anyhow::Result<()> {
-    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
-    if !uow.user_repo().exists(telegram_id).await? {
-        uow.user_repo().create(telegram_id, username).await?;
+    let mut uow = UnitOfWork::new_transactional(db_pool.as_ref()).await?;
+    if !uow.user_repo().await?.exists(telegram_id).await? {
+        uow.user_repo().await?.create(telegram_id, username).await?;
         uow.commit().await?;
     }
     Ok(())

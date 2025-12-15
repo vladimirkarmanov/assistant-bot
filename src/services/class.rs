@@ -15,9 +15,10 @@ pub async fn add_class(
     quantity: u8,
     telegram_user_id: i64,
 ) -> anyhow::Result<i64> {
-    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
+    let mut uow = UnitOfWork::new_transactional(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
+        .await?
         .get_user_by_telegram_id(telegram_user_id)
         .await?
     {
@@ -29,6 +30,7 @@ pub async fn add_class(
 
     let class_id = match uow
         .class_repo()
+        .await?
         .create(name, quantity as i64, user_id)
         .await
     {
@@ -56,9 +58,10 @@ pub async fn get_classes_by_user_id(
     db_pool: Arc<Pool<Sqlite>>,
     telegram_user_id: i64,
 ) -> anyhow::Result<Vec<Class>> {
-    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
+    let mut uow = UnitOfWork::new_readonly(db_pool.as_ref());
     let user_id = match uow
         .user_repo()
+        .await?
         .get_user_by_telegram_id(telegram_user_id)
         .await?
     {
@@ -68,7 +71,7 @@ pub async fn get_classes_by_user_id(
         }
     };
 
-    let classes = uow.class_repo().get_user_classes(user_id).await?;
+    let classes = uow.class_repo().await?.get_user_classes(user_id).await?;
     Ok(classes)
 }
 
@@ -77,9 +80,10 @@ pub async fn get_class_deduction_histories(
     class_id: i64,
     telegram_user_id: i64,
 ) -> anyhow::Result<Vec<ClassDeductionHistory>> {
-    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
+    let mut uow = UnitOfWork::new_readonly(db_pool.as_ref());
     let user_id = match uow
         .user_repo()
+        .await?
         .get_user_by_telegram_id(telegram_user_id)
         .await?
     {
@@ -91,6 +95,7 @@ pub async fn get_class_deduction_histories(
 
     let histories = uow
         .class_deduction_history_repo()
+        .await?
         .get_histories(class_id, user_id)
         .await?;
     Ok(histories)
@@ -101,9 +106,10 @@ pub async fn deduct_class(
     class_id: i64,
     telegram_user_id: i64,
 ) -> anyhow::Result<Class> {
-    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
+    let mut uow = UnitOfWork::new_transactional(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
+        .await?
         .get_user_by_telegram_id(telegram_user_id)
         .await?
     {
@@ -115,6 +121,7 @@ pub async fn deduct_class(
 
     let class = match uow
         .class_repo()
+        .await?
         .get_user_class_by_id(class_id, user_id)
         .await?
     {
@@ -131,6 +138,7 @@ pub async fn deduct_class(
     let new_quantity = class.quantity - 1;
     let updated_class = uow
         .class_repo()
+        .await?
         .update_quantity(class.class_id, new_quantity)
         .await?;
 
@@ -143,9 +151,10 @@ pub async fn add_class_deduction_history(
     class_id: i64,
     telegram_user_id: i64,
 ) -> anyhow::Result<()> {
-    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
+    let mut uow = UnitOfWork::new_transactional(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
+        .await?
         .get_user_by_telegram_id(telegram_user_id)
         .await?
     {
@@ -156,6 +165,7 @@ pub async fn add_class_deduction_history(
     };
 
     uow.class_deduction_history_repo()
+        .await?
         .create(class_id, user_id)
         .await?;
 
@@ -169,9 +179,10 @@ pub async fn update_class_quantity(
     telegram_user_id: i64,
     quantity: u8,
 ) -> anyhow::Result<Class> {
-    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
+    let mut uow = UnitOfWork::new_transactional(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
+        .await?
         .get_user_by_telegram_id(telegram_user_id)
         .await?
     {
@@ -183,6 +194,7 @@ pub async fn update_class_quantity(
 
     let class = match uow
         .class_repo()
+        .await?
         .get_user_class_by_id(class_id, user_id)
         .await?
     {
@@ -194,6 +206,7 @@ pub async fn update_class_quantity(
 
     let updated_class = uow
         .class_repo()
+        .await?
         .update_quantity(class.class_id, quantity)
         .await?;
 

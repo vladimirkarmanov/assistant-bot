@@ -1,7 +1,7 @@
-use std::fmt;
+use std::{fmt, ops::DerefMut};
 
 use chrono::{Datelike, NaiveDateTime};
-use sqlx::{Sqlite, Transaction, prelude::FromRow};
+use sqlx::{SqliteConnection, prelude::FromRow};
 
 use crate::utils::get_russian_weekday_name;
 
@@ -25,13 +25,13 @@ impl fmt::Display for DailyPracticeLog {
         )
     }
 }
-pub struct DailyPracticeLogRepository<'a, 'c> {
-    tx: &'a mut Transaction<'c, Sqlite>,
+pub struct DailyPracticeLogRepository<'a> {
+    conn: &'a mut SqliteConnection,
 }
 
-impl<'a, 'c> DailyPracticeLogRepository<'a, 'c> {
-    pub fn new(tx: &'a mut Transaction<'c, Sqlite>) -> Self {
-        Self { tx }
+impl<'a> DailyPracticeLogRepository<'a> {
+    pub fn new(conn: &'a mut SqliteConnection) -> Self {
+        Self { conn }
     }
 
     pub async fn create(&mut self, minutes: u16, user_id: i64) -> anyhow::Result<i64, sqlx::Error> {
@@ -41,7 +41,7 @@ impl<'a, 'c> DailyPracticeLogRepository<'a, 'c> {
         )
         .bind(minutes)
         .bind(user_id)
-        .execute(self.tx.as_mut())
+        .execute(self.conn.deref_mut())
         .await?;
 
         let class_id = result.last_insert_rowid();
