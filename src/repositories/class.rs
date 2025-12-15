@@ -1,6 +1,6 @@
-use std::fmt;
+use std::{fmt, ops::DerefMut};
 
-use sqlx::{Sqlite, Transaction, prelude::FromRow};
+use sqlx::{SqliteConnection, prelude::FromRow};
 
 #[derive(FromRow)]
 pub struct Class {
@@ -16,13 +16,13 @@ impl fmt::Display for Class {
     }
 }
 
-pub struct ClassRepository<'a, 'c> {
-    tx: &'a mut Transaction<'c, Sqlite>,
+pub struct ClassRepository<'a> {
+    conn: &'a mut SqliteConnection,
 }
 
-impl<'a, 'c> ClassRepository<'a, 'c> {
-    pub fn new(tx: &'a mut Transaction<'c, Sqlite>) -> Self {
-        Self { tx }
+impl<'a> ClassRepository<'a> {
+    pub fn new(conn: &'a mut SqliteConnection) -> Self {
+        Self { conn }
     }
 
     pub async fn create(
@@ -38,7 +38,7 @@ impl<'a, 'c> ClassRepository<'a, 'c> {
         .bind(name)
         .bind(quantity)
         .bind(user_id)
-        .execute(self.tx.as_mut())
+        .execute(self.conn.deref_mut())
         .await?;
 
         let class_id = result.last_insert_rowid();
@@ -54,7 +54,7 @@ impl<'a, 'c> ClassRepository<'a, 'c> {
         )
         .bind(quantity)
         .bind(class_id)
-        .fetch_one(self.tx.as_mut())
+        .fetch_one(self.conn.deref_mut())
         .await?;
 
         Ok(updated_class)
@@ -72,7 +72,7 @@ impl<'a, 'c> ClassRepository<'a, 'c> {
         )
         .bind(class_id)
         .bind(user_id)
-        .fetch_optional(self.tx.as_mut())
+        .fetch_optional(self.conn.deref_mut())
         .await?;
 
         Ok(class)
@@ -85,7 +85,7 @@ impl<'a, 'c> ClassRepository<'a, 'c> {
                  where user_id = ?",
         )
         .bind(user_id)
-        .fetch_all(self.tx.as_mut())
+        .fetch_all(self.conn.deref_mut())
         .await?;
         Ok(classes)
     }

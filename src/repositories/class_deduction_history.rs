@@ -1,7 +1,7 @@
-use std::fmt;
+use std::{fmt, ops::DerefMut};
 
 use chrono::{Datelike, NaiveDateTime};
-use sqlx::{Sqlite, Transaction, prelude::FromRow};
+use sqlx::{SqliteConnection, prelude::FromRow};
 
 use crate::utils::get_russian_weekday_name;
 
@@ -26,13 +26,13 @@ impl fmt::Display for ClassDeductionHistory {
     }
 }
 
-pub struct ClassDeductionHistoryRepository<'a, 'c> {
-    tx: &'a mut Transaction<'c, Sqlite>,
+pub struct ClassDeductionHistoryRepository<'a> {
+    conn: &'a mut SqliteConnection,
 }
 
-impl<'a, 'c> ClassDeductionHistoryRepository<'a, 'c> {
-    pub fn new(tx: &'a mut Transaction<'c, Sqlite>) -> Self {
-        Self { tx }
+impl<'a> ClassDeductionHistoryRepository<'a> {
+    pub fn new(conn: &'a mut SqliteConnection) -> Self {
+        Self { conn }
     }
 
     pub async fn create(&mut self, class_id: i64, user_id: i64) -> anyhow::Result<i64> {
@@ -42,7 +42,7 @@ impl<'a, 'c> ClassDeductionHistoryRepository<'a, 'c> {
         )
         .bind(class_id)
         .bind(user_id)
-        .execute(self.tx.as_mut())
+        .execute(self.conn.deref_mut())
         .await?;
 
         let id = result.last_insert_rowid();
@@ -62,7 +62,7 @@ impl<'a, 'c> ClassDeductionHistoryRepository<'a, 'c> {
         )
         .bind(user_id)
         .bind(class_id)
-        .fetch_all(self.tx.as_mut())
+        .fetch_all(self.conn.deref_mut())
         .await?;
 
         Ok(histories)

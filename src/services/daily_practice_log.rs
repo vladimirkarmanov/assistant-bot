@@ -10,9 +10,10 @@ pub async fn add_daily_practice_entry(
     minutes: u16,
     telegram_user_id: i64,
 ) -> anyhow::Result<i64> {
-    let mut uow = UnitOfWork::new(db_pool.as_ref()).await?;
+    let mut uow = UnitOfWork::new_transactional(db_pool.as_ref()).await?;
     let user_id = match uow
         .user_repo()
+        .await?
         .get_user_by_telegram_id(telegram_user_id)
         .await?
     {
@@ -22,7 +23,11 @@ pub async fn add_daily_practice_entry(
         }
     };
 
-    let daily_practice_entry_id = match uow.daily_practice_log_repo().create(minutes, user_id).await
+    let daily_practice_entry_id = match uow
+        .daily_practice_log_repo()
+        .await?
+        .create(minutes, user_id)
+        .await
     {
         Ok(daily_practice_entry_id) => daily_practice_entry_id,
         Err(_) => bail!(SomethingWentWrongError),
