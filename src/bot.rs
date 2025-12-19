@@ -15,7 +15,7 @@ use crate::{
         class::*,
         command::*,
         common::{idle_callback_handler, idle_message_handler},
-        daily_practice::receive_minutes,
+        daily_practice_log::receive_minutes,
     },
     state::State,
 };

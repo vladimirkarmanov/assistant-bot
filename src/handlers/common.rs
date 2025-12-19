@@ -4,7 +4,7 @@ use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 use crate::{
     bot::DI,
     commands::MenuAction,
-    handlers::{class::*, command::main_menu_handler, daily_practice::*},
+    handlers::{class::*, command::main_menu_handler, daily_practice_log::*},
     state::State,
 };
 
@@ -50,6 +50,9 @@ pub async fn idle_message_handler(
                 dialogue
                     .update(State::AddingDailyPracticeReceiveMinutes)
                     .await?;
+            }
+            Some(MenuAction::DailyPracticeLogHistory) => {
+                list_daily_practice_log_history_handler(bot, msg, di).await?;
             }
             Some(MenuAction::MainMenu) => {
                 main_menu_handler(bot, msg).await?;

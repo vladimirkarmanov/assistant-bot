@@ -34,7 +34,7 @@ impl<'a> DailyPracticeLogRepository<'a> {
         Self { conn }
     }
 
-    pub async fn create(&mut self, minutes: u16, user_id: i64) -> anyhow::Result<i64, sqlx::Error> {
+    pub async fn create(&mut self, minutes: u16, user_id: i64) -> anyhow::Result<i64> {
         let result = sqlx::query(
             "insert into daily_practice_log (minutes, user_id)
              values (?, ?)",
@@ -46,5 +46,18 @@ impl<'a> DailyPracticeLogRepository<'a> {
 
         let class_id = result.last_insert_rowid();
         Ok(class_id)
+    }
+
+    pub async fn get_all(&mut self, user_id: i64) -> anyhow::Result<Vec<DailyPracticeLog>> {
+        let records: Vec<DailyPracticeLog> = sqlx::query_as::<_, DailyPracticeLog>(
+            "select daily_practice_log_id, minutes, user_id, created_at
+             from daily_practice_log
+             where user_id = ?",
+        )
+        .bind(user_id)
+        .fetch_all(self.conn.deref_mut())
+        .await?;
+
+        Ok(records)
     }
 }
