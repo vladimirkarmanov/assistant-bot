@@ -15,7 +15,13 @@ pub struct ClassDeductionHistory {
 
 impl fmt::Display for ClassDeductionHistory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let dt = NaiveDateTime::parse_from_str(&self.created_at, "%Y-%m-%d %H:%M:%S").unwrap();
+        let dt = match NaiveDateTime::parse_from_str(&self.created_at, "%Y-%m-%d %H:%M:%S") {
+            Ok(dt) => dt,
+            Err(_) => {
+                // Fallback: if the datetime cannot be parsed, print the raw value without panicking.
+                return write!(f, "{}", self.created_at);
+            }
+        };
         let formatted_date = dt.format("%d.%m.%Y %H:%M").to_string();
         write!(
             f,

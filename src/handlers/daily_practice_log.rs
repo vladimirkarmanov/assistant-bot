@@ -45,12 +45,12 @@ pub async fn receive_minutes(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match msg.text().map(|text| text.parse::<u16>()) {
         Some(Ok(minutes)) => {
-            let class =
+            let output =
                 match add_daily_practice_entry(di.db_pool.clone(), minutes, msg.chat.id.0).await {
                     Ok(_) => "✅ Запись успешно добавлена!".to_string(),
                     Err(err) => err.to_string(),
                 };
-            bot.send_message(msg.chat.id, class).await?;
+            bot.send_message(msg.chat.id, output).await?;
             dialogue.exit().await?;
         }
         _ => {
@@ -74,7 +74,7 @@ pub async fn list_daily_practice_log_history_handler(
         return Ok(());
     }
 
-    let total_hours = logs.iter().map(|log| log.minutes as f32).sum::<f32>() / 60 as f32;
+    let total_hours = logs.iter().map(|log| log.minutes as f32).sum::<f32>() / 60.0;
     let formatted_logs: Vec<String> = logs.iter().map(|s| s.to_string()).collect();
     let output = format!(
         "Всего: {:.1} часов\n\n{}",

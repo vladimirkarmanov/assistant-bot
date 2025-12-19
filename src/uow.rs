@@ -41,7 +41,9 @@ impl<'a> UnitOfWork<'a> {
                     let c = pool.acquire().await?;
                     *conn = Some(c);
                 }
-                Ok(conn.as_mut().unwrap())
+                Ok(conn
+                    .as_mut()
+                    .expect("Read-only connection should have been acquired before use"))
             }
         }
     }

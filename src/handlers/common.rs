@@ -20,7 +20,7 @@ pub async fn idle_message_handler(
                 classes_menu_handler(bot, msg).await?;
             }
             Some(MenuAction::AddClass) => {
-                bot.send_message(msg.chat.id, "Введите назввание:").await?;
+                bot.send_message(msg.chat.id, "Введите название:").await?;
                 dialogue.update(State::AddingClassReceiveName).await?;
             }
             Some(MenuAction::DeductClass) => {
