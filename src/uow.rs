@@ -49,10 +49,10 @@ impl<'a> UnitOfWork<'a> {
     }
 
     pub async fn commit(mut self) -> anyhow::Result<(), sqlx::Error> {
-        if let UowContext::Transactional(tx_opt) = &mut self.context {
-            if let Some(tx) = tx_opt.take() {
-                tx.commit().await?;
-            }
+        if let UowContext::Transactional(tx_opt) = &mut self.context
+            && let Some(tx) = tx_opt.take()
+        {
+            tx.commit().await?;
         }
         Ok(())
     }

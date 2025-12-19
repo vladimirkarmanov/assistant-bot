@@ -1,12 +1,4 @@
-use std::sync::Arc;
-
-use dptree::case;
-use sqlx::SqlitePool;
-use teloxide::{
-    dispatching::{HandlerExt, dialogue::InMemStorage},
-    prelude::*,
-    utils::command::BotCommands,
-};
+use std::{sync::Arc, time::Duration};
 
 use crate::{
     commands::Command,
@@ -17,12 +9,21 @@ use crate::{
         common::{idle_callback_handler, idle_message_handler},
         daily_practice_log::receive_minutes,
     },
+    middlewares::throttling_middleware,
+    rate_limiter::RedisRateLimiter,
     state::State,
 };
-
+use dptree::case;
+use sqlx::SqlitePool;
+use teloxide::{
+    dispatching::{HandlerExt, dialogue::InMemStorage},
+    prelude::*,
+    utils::command::BotCommands,
+};
 pub struct DI {
     pub config: Config,
     pub db_pool: Arc<SqlitePool>,
+    pub rate_limiter: Arc<RedisRateLimiter>,
 }
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -33,8 +34,17 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let mut sqlite_opts = sqlx::sqlite::SqliteConnectOptions::new();
     sqlite_opts = sqlite_opts.filename(&config.database.path);
-
     let db_pool = SqlitePool::connect_with(sqlite_opts).await?;
+
+    let rate_limiter = Arc::new(
+        RedisRateLimiter::new(
+            &config.redis.url,
+            config.redis.rate_limit,
+            Duration::from_secs(config.redis.rate_interval_secs),
+            "assistant-bot",
+        )
+        .await?,
+    );
 
     let bot = Bot::new(&config.bot_token);
     bot.set_my_commands(Command::bot_commands())
@@ -44,9 +54,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let di = Arc::new(DI {
         config,
         db_pool: Arc::new(db_pool),
+        rate_limiter,
     });
 
     let handler = dptree::entry()
+        .chain(Update::filter_message().filter_async(throttling_middleware))
         .branch(
             Update::filter_message()
                 .filter_command::<Command>()
