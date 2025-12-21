@@ -36,15 +36,13 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     sqlite_opts = sqlite_opts.filename(&config.database.path);
     let db_pool = SqlitePool::connect_with(sqlite_opts).await?;
 
-    let rate_limiter = Arc::new(
-        RedisRateLimiter::new(
-            &config.redis.url,
-            config.redis.rate_limit,
-            Duration::from_secs(config.redis.rate_interval_secs),
-            "assistant-bot",
-        )
-        .await?,
-    );
+    let rate_limiter = RedisRateLimiter::new(
+        &config.redis.url,
+        config.redis.rate_limit,
+        Duration::from_secs(config.redis.rate_interval_secs),
+        "assistant-bot",
+    )
+    .await?;
 
     let bot = Bot::new(&config.bot_token);
     bot.set_my_commands(Command::bot_commands())
@@ -54,7 +52,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let di = Arc::new(DI {
         config,
         db_pool: Arc::new(db_pool),
-        rate_limiter,
+        rate_limiter: Arc::new(rate_limiter),
     });
 
     let handler = dptree::entry()
