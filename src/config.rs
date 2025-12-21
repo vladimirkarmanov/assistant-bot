@@ -14,6 +14,7 @@ pub struct RedisConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
+    pub debug: bool,
     pub bot_token: String,
     pub database: DatabaseConfig,
     pub redis: RedisConfig,

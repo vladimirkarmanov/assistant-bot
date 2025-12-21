@@ -5,6 +5,10 @@ use teloxide::{Bot, prelude::Requester, types::Message};
 use crate::bot::DI;
 
 pub async fn throttling_middleware(msg: Message, bot: Bot, di: Arc<DI>) -> bool {
+    if di.config.debug {
+        return true;
+    }
+
     let user_id = match msg.from {
         Some(u) => u.id.0 as i64,
         None => {
