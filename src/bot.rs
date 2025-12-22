@@ -9,7 +9,7 @@ use crate::{
         common::{idle_callback_handler, idle_message_handler},
         daily_practice_log::receive_minutes,
     },
-    middlewares::throttling_middleware,
+    middlewares::*,
     rate_limiter::RedisRateLimiter,
     state::State,
 };
@@ -20,6 +20,7 @@ use teloxide::{
     prelude::*,
     utils::command::BotCommands,
 };
+
 pub struct DI {
     pub config: Config,
     pub db_pool: Arc<SqlitePool>,
@@ -56,7 +57,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     });
 
     let handler = dptree::entry()
-        .chain(Update::filter_message().filter_async(throttling_middleware))
+        .with_rate_limit()
         .branch(
             Update::filter_message()
                 .filter_command::<Command>()

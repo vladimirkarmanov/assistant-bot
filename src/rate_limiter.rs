@@ -33,7 +33,7 @@ impl RedisRateLimiter {
         })
     }
 
-    fn build_key(&self, user_id: i64) -> String {
+    fn build_key(&self, user_id: u64) -> String {
         format!(
             "{}:rate_limit:{}:{}",
             self.namespace,
@@ -42,7 +42,7 @@ impl RedisRateLimiter {
         )
     }
 
-    pub async fn get_user_current_limit(&self, user_id: i64) -> anyhow::Result<UserRateLimit> {
+    pub async fn get_user_current_limit(&self, user_id: u64) -> anyhow::Result<UserRateLimit> {
         let key = self.build_key(user_id);
         let mut conn = self.conn.clone();
 
