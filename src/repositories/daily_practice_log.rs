@@ -3,7 +3,7 @@ use std::{fmt, ops::DerefMut};
 use chrono::{Datelike, NaiveDateTime};
 use sqlx::{SqliteConnection, prelude::FromRow};
 
-use crate::utils::get_russian_weekday_name;
+use crate::utils;
 
 #[derive(FromRow)]
 pub struct DailyPracticeLog {
@@ -26,7 +26,7 @@ impl fmt::Display for DailyPracticeLog {
             f,
             "{} ({}) - {} мин",
             formatted_date,
-            get_russian_weekday_name(dt.weekday(), true),
+            utils::get_russian_weekday_name(dt.weekday(), true),
             self.minutes
         )
     }

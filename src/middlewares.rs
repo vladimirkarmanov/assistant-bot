@@ -5,22 +5,10 @@ use teloxide::{Bot, prelude::Requester};
 
 use crate::bot::DI;
 
+use crate::utils;
 use std::error::Error;
 use teloxide::dispatching::UpdateHandler;
-use teloxide::types::{Update, UpdateKind, User};
-
-fn get_user(update: &Update) -> Option<&User> {
-    match &update.kind {
-        UpdateKind::Message(msg)
-        | UpdateKind::EditedMessage(msg)
-        | UpdateKind::ChannelPost(msg) => msg.from.as_ref(),
-        UpdateKind::CallbackQuery(q) => Some(&q.from),
-        UpdateKind::InlineQuery(q) => Some(&q.from),
-        UpdateKind::MyChatMember(m) => Some(&m.from),
-        UpdateKind::ChatMember(m) => Some(&m.from),
-        _ => None,
-    }
-}
+use teloxide::types::{Update, UpdateKind};
 
 pub trait Middlewares {
     fn with_rate_limit(self) -> Self;
@@ -33,7 +21,7 @@ impl Middlewares for UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
                 return true;
             }
 
-            let user_id = match get_user(&update) {
+            let user_id = match utils::get_user(&update) {
                 Some(u) => u.id,
                 None => return true,
             };
