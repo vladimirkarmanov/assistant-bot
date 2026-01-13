@@ -14,3 +14,6 @@ clippy:
 
 db-migrate:
 	set -a && source .env && sqlx migrate run
+
+test:
+	set -a && source .env && cargo test

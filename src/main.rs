@@ -12,6 +12,9 @@ mod state;
 mod uow;
 mod utils;
 
+#[cfg(test)]
+pub mod test_utils;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     bot::run().await?;
