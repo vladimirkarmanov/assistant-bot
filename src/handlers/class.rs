@@ -197,7 +197,6 @@ pub async fn deduct_class_callback_handler(
 
         let output = match deduct_class(di.db_pool.clone(), class_id, telegram_user_id).await {
             Ok(class) => {
-                add_class_deduction_history(di.db_pool.clone(), class_id, telegram_user_id).await?;
                 format!(
                     "✅ Занятие {name} успешно списано! Остаток: {quantity}",
                     name = class.name,

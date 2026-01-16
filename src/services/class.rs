@@ -142,35 +142,13 @@ pub async fn deduct_class(
         .update_quantity(class.class_id, new_quantity)
         .await?;
 
-    uow.commit().await?;
-    Ok(updated_class)
-}
-
-pub async fn add_class_deduction_history(
-    db_pool: Arc<Pool<Sqlite>>,
-    class_id: i64,
-    telegram_user_id: i64,
-) -> anyhow::Result<()> {
-    let mut uow = UnitOfWork::new_transactional(db_pool.as_ref()).await?;
-    let user_id = match uow
-        .user_repo()
-        .await?
-        .get_user_by_telegram_id(telegram_user_id)
-        .await?
-    {
-        Some(u) => u.user_id,
-        None => {
-            bail!(UserNotFoundError);
-        }
-    };
-
     uow.class_deduction_history_repo()
         .await?
         .create(class_id, user_id)
         .await?;
 
     uow.commit().await?;
-    Ok(())
+    Ok(updated_class)
 }
 
 pub async fn update_class_quantity(
