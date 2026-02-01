@@ -8,9 +8,6 @@ use crate::utils;
 #[derive(FromRow)]
 pub struct ClassDeductionHistory {
     pub created_at: String,
-    pub class_deduction_history_id: i64,
-    pub class_id: i64,
-    pub user_id: i64,
 }
 
 impl fmt::Display for ClassDeductionHistory {
@@ -61,7 +58,7 @@ impl<'a> ClassDeductionHistoryRepository<'a> {
         user_id: i64,
     ) -> anyhow::Result<Vec<ClassDeductionHistory>> {
         let histories: Vec<ClassDeductionHistory> = sqlx::query_as::<_, ClassDeductionHistory>(
-            "select class_deduction_history_id, class_id, user_id, created_at
+            "select created_at
              from class_deduction_history
              where user_id = ?
              and class_id = ?",
