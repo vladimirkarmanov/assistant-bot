@@ -1,6 +1,7 @@
 use std::{error::Error, sync::Arc};
 use teloxide::{
-    dispatching::dialogue::InMemStorage, payloads::SendMessageSetters, prelude::*, types::ParseMode,
+    dispatching::dialogue::InMemStorage, payloads::SendMessageSetters, prelude::*,
+    types::ParseMode, utils::html,
 };
 
 use crate::{
@@ -72,7 +73,7 @@ pub async fn receive_quantity_handler(
                     Ok(class) => {
                         format!(
                             "✅ Занятие {name} успешно обновлено! Остаток: {quantity}",
-                            name = class.name,
+                            name = html::escape(&class.name),
                             quantity = class.quantity
                         )
                     }
@@ -153,7 +154,10 @@ pub async fn list_classes_handler(
         return Ok(());
     }
 
-    let formatted_classes: Vec<String> = classes.iter().map(|s| s.to_string()).collect();
+    let formatted_classes: Vec<String> = classes
+        .iter()
+        .map(|c| format!("{} ({})", html::escape(&c.name), c.quantity))
+        .collect();
     let output = formatted_classes.join("\n");
     bot.send_message(msg.chat.id, output)
         .parse_mode(ParseMode::Html)
