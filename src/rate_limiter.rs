@@ -1,6 +1,16 @@
-use redis::AsyncCommands;
 use redis::aio::ConnectionManager;
 use std::time::Duration;
+
+/// Atomically increments the per-user counter and sets the expiry on the
+/// first request of a window. Doing both in one script guarantees the key
+/// can never be left without a TTL (which would rate-limit the user forever).
+const RATE_LIMIT_SCRIPT: &str = r"
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return current
+";
 
 #[derive(Clone)]
 pub struct RedisRateLimiter {
@@ -46,21 +56,17 @@ impl RedisRateLimiter {
         let key = self.build_key(user_id);
         let mut conn = self.conn.clone();
 
-        // Increment request count
-        let requests_count: u16 = conn.incr(&key, 1).await?;
+        let ttl_secs = i64::try_from(self.interval.as_secs()).unwrap_or(10);
+        let requests_count: i64 = redis::Script::new(RATE_LIMIT_SCRIPT)
+            .key(&key)
+            .arg(ttl_secs)
+            .invoke_async(&mut conn)
+            .await?;
 
-        // Set TTL
-        if requests_count == 1 {
-            let _: () = redis::cmd("EXPIRE")
-                .arg(&key)
-                .arg(i64::try_from(self.interval.as_secs()).unwrap_or(10))
-                .query_async(&mut conn)
-                .await?;
-        }
-
+        let limit = i64::from(self.limit);
         Ok(UserRateLimit {
-            can_proceed_request: requests_count <= self.limit,
-            should_notify_user: requests_count == self.limit + 1,
+            can_proceed_request: requests_count <= limit,
+            should_notify_user: requests_count == limit + 1,
         })
     }
 }
