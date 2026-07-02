@@ -1,5 +1,7 @@
 use std::sync::Arc;
-use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
+use teloxide::{
+    dispatching::dialogue::InMemStorage, payloads::AnswerCallbackQuerySetters, prelude::*,
+};
 
 use crate::{
     bot::DI,
@@ -88,5 +90,15 @@ pub async fn idle_callback_handler(
         _ => {}
     }
 
+    Ok(())
+}
+
+pub async fn stale_callback_handler(
+    bot: Bot,
+    q: CallbackQuery,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    bot.answer_callback_query(q.id)
+        .text("Сначала завершите или отмените текущую операцию: /cancel_operation")
+        .await?;
     Ok(())
 }

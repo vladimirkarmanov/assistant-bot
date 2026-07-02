@@ -6,7 +6,7 @@ use crate::{
     handlers::{
         class::*,
         command::*,
-        common::{idle_callback_handler, idle_message_handler},
+        common::{idle_callback_handler, idle_message_handler, stale_callback_handler},
         daily_practice_log::receive_minutes,
     },
     middlewares::*,
@@ -83,7 +83,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .branch(
             Update::filter_callback_query()
                 .enter_dialogue::<CallbackQuery, InMemStorage<State>, State>()
-                .branch(case![State::Idle].endpoint(idle_callback_handler)),
+                .branch(case![State::Idle].endpoint(idle_callback_handler))
+                .endpoint(stale_callback_handler),
         );
 
     Dispatcher::builder(bot, handler)
